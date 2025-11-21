@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable hot reload in Docker (Windows/Mac require polling)
+  // Turbopack config (Next.js 16 default bundler)
+  turbopack: {
+    // Turbopack has better file watching than webpack by default
+    // No additional config needed for Docker hot reload
+  },
+
+  // Keep webpack config for backwards compatibility if needed
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {

@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile.prod
     container_name: dashboard-prod
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}

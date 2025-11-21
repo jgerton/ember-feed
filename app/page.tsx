@@ -5,10 +5,10 @@ export default function Home() {
         <h1 className="text-6xl font-bold text-ember-500 mb-4">
           Ember Feed
         </h1>
-        <p className="text-xl text-warm-gray-600">
+        <p className="text-xl text-neutral-600">
           Personal news dashboard with ML-powered ranking
         </p>
-        <p className="mt-8 text-warm-gray-500">
+        <p className="mt-8 text-neutral-500">
           Coming soon...
         </p>
       </div>
