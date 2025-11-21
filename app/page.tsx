@@ -3,6 +3,7 @@
 import NewsWidget from '@/components/NewsWidget'
 import TodoList from '@/components/TodoList'
 import ThemeToggle from '@/components/ThemeToggle'
+import DailySummary from '@/components/DailySummary'
 
 export default function Home() {
   return (
@@ -52,8 +53,7 @@ export default function Home() {
             <h2 className="text-xl font-bold text-neutral-50 mb-3">
               Daily Summary
             </h2>
-            {/* DailySummary will go here */}
-            <p className="text-neutral-400">Summary coming soon...</p>
+            <DailySummary />
           </div>
         </div>
       </div>
