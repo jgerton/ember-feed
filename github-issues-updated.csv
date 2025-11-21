@@ -1,0 +1,528 @@
+title,body,labels,milestone
+"[Phase 1] Create Next.js app structure","Set up basic Next.js 14 app directory structure with TypeScript.
+
+**Status:** Not started
+**Priority:** P0 - Blocker for all UI work
+
+**Tasks:**
+- [ ] Create app/layout.tsx (root layout)
+- [ ] Create app/page.tsx (home page dashboard)
+- [ ] Set up Inter font with next/font
+- [ ] Add metadata (title, description, OG tags)
+- [ ] Test app loads in browser
+
+**Files to create:**
+- app/layout.tsx
+- app/page.tsx
+- app/fonts.ts (optional)
+
+**Acceptance criteria:**
+- App loads at localhost:3000
+- Glassmorphic background visible
+- Inter font loads correctly
+- No console errors","setup,phase-1,p0","Phase 1: Basic App"
+"[Phase 1] Build NewsWidget component","Create the main news feed widget with glassmorphic card design.
+
+**Status:** Not started
+**Priority:** P0 - Core feature
+
+**Design:**
+- Glassmorphic card (glass-medium class)
+- Article list with infinite scroll
+- Timeframe toggle (4hr / 24hr / 7day)
+- Score badge display (⭐ 9.2)
+- Source, author, timestamp
+- Topic tags
+
+**Tasks:**
+- [ ] Create components/NewsWidget.tsx
+- [ ] Create components/ArticleCard.tsx
+- [ ] Add timeframe selector
+- [ ] Implement scoring display
+- [ ] Add hover effects
+- [ ] Make responsive
+
+**Acceptance criteria:**
+- Widget renders with glassmorphic styling
+- Articles display in cards
+- Timeframe toggle works
+- Responsive on mobile","feature,ui,phase-1,p0","Phase 1: Basic App"
+"[Phase 1] Build TodoList component","Create simple todo list widget with local persistence.
+
+**Status:** Not started
+**Priority:** P1 - Secondary feature
+
+**Features:**
+- Add/edit/delete todos
+- Mark complete/incomplete
+- Glassmorphic card design
+- Keyboard shortcuts (Enter to add, Esc to cancel)
+
+**Tasks:**
+- [ ] Create components/TodoList.tsx
+- [ ] Create components/TodoItem.tsx
+- [ ] Add localStorage persistence
+- [ ] Implement keyboard shortcuts
+- [ ] Add smooth animations
+
+**Acceptance criteria:**
+- Can add/edit/delete todos
+- Persists across page refreshes
+- Enter key adds todo
+- Animations smooth","feature,ui,phase-1,p1","Phase 1: Basic App"
+"[Phase 1] Implement theme toggle","Add dark/light mode switcher.
+
+**Status:** Not started (CSS ready, need UI component)
+**Priority:** P2 - Polish feature
+
+**Tasks:**
+- [ ] Create components/ThemeToggle.tsx
+- [ ] Add theme context/provider
+- [ ] Persist preference to localStorage
+- [ ] Update glassmorphic styles for light mode
+- [ ] Test all components in both modes
+
+**Acceptance criteria:**
+- Toggle button visible in header
+- Smooth transition between modes
+- Preference persists
+- All components look good in both modes","feature,ui,phase-1,p2","Phase 1: Basic App"
+"[Phase 2] Initialize database on app startup","Set up SQLite database with schema on first run.
+
+**Status:** Schema ready, need initialization logic
+**Priority:** P0 - Blocker for data features
+
+**Tasks:**
+- [ ] Update lib/db/index.ts to auto-initialize
+- [ ] Add seed data for testing
+- [ ] Create npm script for manual init
+- [ ] Test database creates correctly
+- [ ] Add error handling
+
+**Acceptance criteria:**
+- Database file created on first npm run dev
+- Schema applied correctly
+- Can query tables
+- Seed data loaded","backend,database,phase-2,p0","Phase 2: Data Layer"
+"[Phase 2] Create API route for todos","Implement CRUD operations for todos via API.
+
+**Status:** Not started
+**Priority:** P0 - Needed for todo persistence
+
+**Endpoints:**
+- GET /api/todos - List all todos
+- POST /api/todos - Create todo
+- PATCH /api/todos/[id] - Update todo
+- DELETE /api/todos/[id] - Delete todo
+
+**Tasks:**
+- [ ] Create app/api/todos/route.ts
+- [ ] Create app/api/todos/[id]/route.ts
+- [ ] Implement database queries
+- [ ] Add input validation
+- [ ] Add error handling
+- [ ] Test with Postman/curl
+
+**Acceptance criteria:**
+- All CRUD operations work
+- Returns proper status codes
+- Validates input
+- Handles errors gracefully","backend,api,phase-2,p0","Phase 2: Data Layer"
+"[Phase 2] Create API route for ranked articles","Endpoint to get personalized, ranked news articles.
+
+**Status:** Algorithm ready, need API wrapper
+**Priority:** P0 - Core feature
+
+**Endpoint:**
+- GET /api/news?timeframe=24h&limit=20
+
+**Query params:**
+- timeframe: 4h, 24h, 7d (default: 24h)
+- limit: number of articles (default: 20)
+
+**Tasks:**
+- [ ] Create app/api/news/route.ts
+- [ ] Integrate with ranking-algorithm.ts
+- [ ] Add query param parsing
+- [ ] Return JSON response
+- [ ] Add caching (optional)
+
+**Acceptance criteria:**
+- Returns ranked articles
+- Respects timeframe parameter
+- Returns personalized scores
+- Fast response (<500ms)","backend,api,phase-2,p0","Phase 2: Data Layer"
+"[Phase 3] Implement RSS feed parser","Parse RSS feeds from multiple sources.
+
+**Status:** Not started (rss-parser dependency added)
+**Priority:** P0 - Blocker for news fetching
+
+**Sources to support:**
+- Hacker News (hnrss.org)
+- Reddit RSS
+- Dev.to
+- Expert blogs
+
+**Tasks:**
+- [ ] Create lib/news/rss-parser.ts
+- [ ] Parse RSS feed URL
+- [ ] Extract: title, URL, author, published date
+- [ ] Detect popularity (upvotes from feed)
+- [ ] Handle errors (invalid feeds)
+- [ ] Test with each source
+
+**Acceptance criteria:**
+- Parses HN, Reddit, Dev.to feeds
+- Extracts all required fields
+- Handles errors gracefully
+- Fast parsing (<1s per feed)","backend,news,phase-3,p0","Phase 3: News Fetching"
+"[Phase 3] Create news source configurations","Define all news sources with metadata.
+
+**Status:** Not started
+**Priority:** P0 - Needed for fetcher
+
+**Configuration:**
+For each source:
+- Name (e.g., ""ycombinator"")
+- Type (rss, api, scrape)
+- URL
+- Refresh interval
+- Trust tier (1, 2, 3)
+
+**Tasks:**
+- [ ] Create lib/news/sources.ts
+- [ ] Add Tier 1 sources (HN, Reddit, Dev.to)
+- [ ] Add Tier 2 sources (expert blogs)
+- [ ] Add source metadata
+- [ ] Export typed config
+
+**Acceptance criteria:**
+- All sources configured
+- Type-safe configuration
+- Easy to add new sources","backend,news,phase-3,p0","Phase 3: News Fetching"
+"[Phase 3] Implement topic extraction","Extract topics from article titles/summaries using keyword matching.
+
+**Status:** Not started (algorithm included in PERSONAL_ALGO_DESIGN.md)
+**Priority:** P1 - Needed for personalization
+
+**Topics to detect:**
+- AI, Startups, Python, JavaScript, DevOps, Web Dev
+
+**Tasks:**
+- [ ] Create lib/news/topic-extractor.ts
+- [ ] Define keyword mappings
+- [ ] Implement matching algorithm
+- [ ] Test with real articles
+- [ ] Return JSON array of topics
+
+**Acceptance criteria:**
+- Detects relevant topics
+- Returns array of strings
+- Fast extraction (<10ms)
+- Handles empty/short text","backend,news,phase-3,p1","Phase 3: News Fetching"
+"[Phase 3] Build news fetcher orchestrator","Main service to fetch from all sources and store in DB.
+
+**Status:** Not started
+**Priority:** P0 - Core feature
+
+**Flow:**
+1. Iterate through sources
+2. Parse RSS/API
+3. Extract topics
+4. Check for duplicates (by URL)
+5. Insert into articles table
+6. Update source metadata
+
+**Tasks:**
+- [ ] Create lib/news/fetcher.ts
+- [ ] Integrate rss-parser
+- [ ] Integrate topic-extractor
+- [ ] Add duplicate detection
+- [ ] Insert into database
+- [ ] Handle errors per source (don't fail all)
+- [ ] Return fetch statistics
+
+**Acceptance criteria:**
+- Fetches from all sources
+- Stores in database
+- Avoids duplicates
+- Handles errors gracefully
+- Returns summary (articles fetched, sources succeeded/failed)","backend,news,phase-3,p0","Phase 3: News Fetching"
+"[Phase 3] Integrate fetcher with /fetch-daily-news command","Connect news fetcher to slash command.
+
+**Status:** Command skeleton exists, needs implementation
+**Priority:** P0 - User trigger for news fetch
+
+**Tasks:**
+- [ ] Update .claude/commands/fetch-daily-news.md
+- [ ] Call lib/news/fetcher.ts
+- [ ] Display fetch statistics
+- [ ] Handle errors gracefully
+- [ ] Test command execution
+
+**Acceptance criteria:**
+- Command triggers news fetch
+- Shows progress/results
+- Handles errors
+- Can run multiple times without duplicates","feature,claude-code,phase-3,p0","Phase 3: News Fetching"
+"[Phase 4] Implement impression tracking","Track when articles are shown in the feed.
+
+**Status:** Algorithm function ready, need frontend integration
+**Priority:** P1 - Needed for learning
+
+**Implementation:**
+- Use IntersectionObserver API
+- Track when article card enters viewport
+- Send to /api/analytics/impression
+- Debounce for performance
+
+**Tasks:**
+- [ ] Create lib/analytics.ts (client utility)
+- [ ] Add IntersectionObserver to ArticleCard
+- [ ] Create app/api/analytics/impression/route.ts
+- [ ] Call recordImpression from ranking-algorithm.ts
+- [ ] Test tracking works
+
+**Acceptance criteria:**
+- Tracks impressions when visible
+- Doesn't track same article twice
+- Fast (no performance impact)
+- Data saved to database","feature,analytics,phase-4,p1","Phase 4: Learning"
+"[Phase 4] Implement click tracking","Track when user clicks to read an article.
+
+**Status:** Algorithm function ready, need frontend integration
+**Priority:** P0 - Critical for learning
+
+**Tasks:**
+- [ ] Add onClick handler to article links
+- [ ] Create app/api/analytics/click/route.ts
+- [ ] Call recordClick from ranking-algorithm.ts
+- [ ] Test tracking works
+- [ ] Open article in new tab
+
+**Acceptance criteria:**
+- Tracks clicks
+- Doesn't block navigation
+- Fast (async)
+- Data saved to database","feature,analytics,phase-4,p0","Phase 4: Learning"
+"[Phase 4] Implement rating system (upvote/downvote)","Add 👍/👎 buttons to articles.
+
+**Status:** Algorithm function ready, need UI
+**Priority:** P0 - Explicit feedback signal
+
+**UI:**
+- 👍 Upvote button
+- 👎 Downvote button
+- 💾 Save for later button
+- Highlight when rated
+- Show count (optional)
+
+**Tasks:**
+- [ ] Create components/RatingButtons.tsx
+- [ ] Add to ArticleCard
+- [ ] Create app/api/analytics/rating/route.ts
+- [ ] Call recordRating from ranking-algorithm.ts
+- [ ] Trigger immediate source weight update
+- [ ] Add animations
+
+**Acceptance criteria:**
+- Buttons work
+- Visual feedback on click
+- Triggers weight update
+- Persists ratings","feature,analytics,ui,phase-4,p0","Phase 4: Learning"
+"[Phase 4] Implement dwell time tracking","Measure how long user reads an article.
+
+**Status:** Algorithm function ready, need frontend integration
+**Priority:** P2 - Nice to have signal
+
+**Implementation:**
+- Use Page Visibility API
+- Start timer on click
+- Stop timer on page hide/close
+- Send to /api/analytics/dwell-time
+
+**Tasks:**
+- [ ] Add dwell time tracking to analytics.ts
+- [ ] Create app/api/analytics/dwell-time/route.ts
+- [ ] Call recordDwellTime from ranking-algorithm.ts
+- [ ] Test tracking works
+- [ ] Handle edge cases (tab switching)
+
+**Acceptance criteria:**
+- Tracks reading time
+- Handles tab switching
+- Sends on page unload
+- Data saved to database","feature,analytics,phase-4,p2","Phase 4: Learning"
+"[Phase 4] Test algorithm learning","Verify personalization works with real data.
+
+**Status:** Algorithm ready, needs testing
+**Priority:** P0 - Core feature validation
+
+**Test scenarios:**
+1. Cold start (no data) - should show default ranking
+2. After 10 clicks - should personalize sources
+3. After upvotes - should boost similar content
+4. After downvotes - should suppress similar content
+
+**Tasks:**
+- [ ] Create test data (articles, engagements)
+- [ ] Manually interact with feed
+- [ ] Verify source weights change
+- [ ] Verify personalized scores differ from default
+- [ ] Document test results
+
+**Acceptance criteria:**
+- Algorithm learns from behavior
+- Weights update correctly
+- Personalized scores differ from cold start
+- No bugs/crashes","testing,algorithm,phase-4,p0","Phase 4: Learning"
+"[Phase 5] Add screenshots to README","Create portfolio-ready visuals.
+
+**Tasks:**
+- [ ] Take screenshot of dashboard (dark mode)
+- [ ] Take screenshot of dashboard (light mode)
+- [ ] Take screenshot of article card
+- [ ] Take screenshot of rating interaction
+- [ ] Create demo GIF (fetch news -> see results)
+- [ ] Add to README.md
+
+**Acceptance criteria:**
+- High-quality screenshots (1920x1080+)
+- Show glassmorphic design
+- Demo GIF shows key interaction
+- Images optimized for web","documentation,portfolio,phase-5,p1","Phase 5: Polish"
+"[Phase 5] Security review","Audit for common vulnerabilities before open sourcing.
+
+**Check list:**
+- [ ] SQL injection (use parameterized queries)
+- [ ] XSS vulnerabilities (sanitize inputs)
+- [ ] Secrets in code (check .env usage)
+- [ ] Run npm audit
+- [ ] Check CORS configuration
+- [ ] Rate limiting on APIs
+- [ ] Input validation on all endpoints
+
+**Tasks:**
+- [ ] Run automated security scan
+- [ ] Manual code review
+- [ ] Fix identified issues
+- [ ] Document security measures in README
+
+**Acceptance criteria:**
+- No high-severity vulnerabilities
+- All inputs validated
+- No secrets in code
+- npm audit clean","security,review,phase-5,p0","Phase 5: Polish"
+"[Phase 5] Performance optimization","Optimize for fast load times and smooth interactions.
+
+**Optimizations:**
+- [ ] Add database indexes
+- [ ] Implement API response caching
+- [ ] Lazy load images
+- [ ] Code splitting
+- [ ] Minimize bundle size
+- [ ] Optimize Tailwind (PurgeCSS)
+
+**Tasks:**
+- [ ] Profile slow operations
+- [ ] Add missing indexes to schema
+- [ ] Implement caching strategy
+- [ ] Test performance improvements
+- [ ] Document optimizations
+
+**Acceptance criteria:**
+- Initial load <2s
+- Feed renders <500ms
+- No layout shift
+- Smooth scrolling","performance,optimization,phase-5,p1","Phase 5: Polish"
+"[Future] Build MCP server for news aggregation","Create standardized MCP server for news APIs.
+
+**Status:** Optional, post-MVP
+**Priority:** P3 - Nice to have
+
+**Features:**
+- Unified interface for NewsAPI, HN API, Reddit API
+- Caching layer
+- Rate limiting
+- Error handling
+
+**Tasks:**
+- [ ] Research MCP server structure
+- [ ] Implement NewsAPI integration
+- [ ] Implement HN API integration
+- [ ] Add caching with Redis (optional)
+- [ ] Document MCP endpoints
+
+**Acceptance criteria:**
+- MCP server runs independently
+- Provides REST API
+- Caches responses
+- Handles rate limits","future,mcp,backend,enhancement","Future Enhancements"
+"[Future] Create dashboard-curator skill","Claude Code skill for intelligent curation.
+
+**Status:** Optional, post-MVP
+**Priority:** P3 - Nice to have
+
+**Responsibilities:**
+- Filter news by user interests
+- Detect cross-source trends
+- Summarize articles
+- Pull from expert blogs
+
+**Tasks:**
+- [ ] Create .claude/skills/dashboard-curator.md
+- [ ] Define expert source list
+- [ ] Implement filtering logic
+- [ ] Add trend detection
+- [ ] Test with real data
+
+**Acceptance criteria:**
+- Skill runs on demand
+- Filters relevant content
+- Detects trends
+- Works with existing fetcher","future,skill,claude-code,enhancement","Future Enhancements"
+"[Future] Add insights dashboard","Visualize reading patterns and preferences.
+
+**Status:** Optional, post-MVP
+**Priority:** P3 - Nice to have
+
+**Metrics:**
+- Top sources by engagement
+- Top topics by reads
+- Reading time trends
+- Most active times
+- Source performance
+
+**Tasks:**
+- [ ] Create components/InsightsDashboard.tsx
+- [ ] Query engagement data
+- [ ] Calculate metrics
+- [ ] Add simple visualizations (bar charts)
+- [ ] Make responsive
+
+**Acceptance criteria:**
+- Shows reading stats
+- Updates daily
+- Responsive design
+- Shareable","future,analytics,ui,enhancement","Future Enhancements"
+"[Future] Daily automation hook","Automatically fetch news every morning.
+
+**Status:** Optional, post-MVP
+**Priority:** P3 - Nice to have
+
+**Trigger:**
+- Check time on user-prompt-submit
+- Run if morning (8-9am) and not run today
+
+**Tasks:**
+- [ ] Create .claude/hooks/daily-fetch.md
+- [ ] Add time checking logic
+- [ ] Integrate with /fetch-daily-news
+- [ ] Add notification
+- [ ] Test hook fires correctly
+
+**Acceptance criteria:**
+- Runs once per day
+- Fetches news automatically
+- Doesn't block user
+- Can be disabled","future,automation,claude-code,enhancement","Future Enhancements"

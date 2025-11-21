@@ -1,0 +1,44 @@
+version: '3.9'
+
+services:
+  # Next.js application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dashboard-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      # Exclude node_modules (use container's version)
+      - /app/node_modules
+      # Persist Next.js cache for faster rebuilds
+      - ./.next:/app/.next
+    environment:
+      - NODE_ENV=development
+      # Enable hot reload polling for Windows/Mac
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    stdin_open: true  # Keep container running for interactive debugging
+    tty: true
+    restart: unless-stopped
+    command: npm run dev
+
+  # Optional: Add a database service later if needed
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: dashboard-db
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   environment:
+  #     - POSTGRES_DB=dashboard
+  #     - POSTGRES_USER=dashboard_user
+  #     - POSTGRES_PASSWORD=dashboard_pass
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+
+# volumes:
+#   postgres_data:

@@ -1,0 +1,51 @@
+# Multi-stage production Dockerfile
+# Optimized for small image size and security
+
+# Stage 1: Install production dependencies only
+FROM node:18-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --production --ignore-scripts
+
+# Stage 2: Build application
+FROM node:18-alpine AS builder
+WORKDIR /app
+
+# Install all dependencies (including dev)
+COPY package*.json ./
+RUN npm ci
+
+# Copy source and build
+COPY . .
+RUN npm run build
+
+# Stage 3: Production runtime (minimal image)
+FROM node:18-alpine AS runner
+WORKDIR /app
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy production dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy built application from builder stage
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package*.json ./
+
+# Set correct permissions
+RUN chown -R nextjs:nodejs /app
+
+# Run as non-root user
+USER nextjs
+
+# Expose port
+EXPOSE 3000
+
+# Start production server
+CMD ["npm", "start"]

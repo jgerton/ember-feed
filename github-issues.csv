@@ -1,0 +1,548 @@
+Title,Body,Labels,Milestone,Assignees,Priority
+"[Setup] Initialize Next.js project structure","Create basic Next.js 14 app structure with TypeScript and ESLint configuration.
+
+**Tasks:**
+- [x] Create package.json with dependencies
+- [x] Set up TypeScript configuration
+- [ ] Create app directory structure
+- [ ] Add ESLint and Prettier configs
+
+**Files to create:**
+- app/layout.tsx
+- app/page.tsx
+- tsconfig.json","setup,phase-1","Phase 1: Core Dashboard",,P0
+"[Setup] Configure Tailwind CSS with custom design system","Implement custom Tailwind configuration with warm ember/gold color palette and glassmorphic utilities.
+
+**Reference:** See DESIGN_SYSTEM.md for full specifications
+
+**Tasks:**
+- [x] Create tailwind.config.ts with custom colors
+- [x] Add glassmorphic utility classes
+- [x] Set up globals.css with theme variables
+- [ ] Test light/dark mode switching
+- [ ] Verify accessibility (contrast ratios)
+
+**Colors:**
+- Primary: Ember (warm orange)
+- Accent: Gold (golden hour)
+- Neutral: Warm grays","design,setup,phase-1","Phase 1: Core Dashboard",,P0
+"[Setup] Docker configuration with hot reload","Set up Docker and docker-compose for development with hot reload support.
+
+**Reference:** See DOCKER_GUIDE.md
+
+**Tasks:**
+- [x] Create Dockerfile for development
+- [x] Create Dockerfile.prod for production
+- [x] Configure docker-compose.yml
+- [x] Add .dockerignore
+- [x] Configure webpack polling for hot reload
+- [ ] Test hot reload in Docker
+- [ ] Document setup process
+
+**Features:**
+- Hot reload via polling (Windows/Mac compatible)
+- Multi-stage builds for production
+- Volume mounts for development","docker,devops,setup,phase-1","Phase 1: Core Dashboard",,P0
+"[Database] Initialize SQLite database with schema","Create database schema for articles, engagement tracking, and personalization.
+
+**Reference:** See lib/db/schema.sql
+
+**Tables:**
+- articles (news content)
+- article_engagement (tracking clicks, ratings, dwell time)
+- source_weights (learned source preferences)
+- topic_preferences (learned topic interests)
+- author_weights (favorite writers)
+- todos (task management)
+- daily_summaries (aggregated insights)
+- algo_config (algorithm settings)
+
+**Tasks:**
+- [x] Create schema.sql
+- [x] Create db connection utility (lib/db/index.ts)
+- [ ] Add migration system (future)
+- [ ] Create seed data for testing","database,backend,phase-1","Phase 1: Core Dashboard",,P0
+"[Algorithm] Implement personal recommendation algorithm","Build the core ranking algorithm that learns from user behavior.
+
+**Reference:** See PERSONAL_ALGO_DESIGN.md
+
+**Components:**
+1. Initial scoring (cold start):
+   - Recency decay
+   - Popularity normalization
+   - Default source trust
+
+2. Personalized scoring:
+   - Learned source weights
+   - Topic matching
+   - Author preferences
+
+3. Learning system:
+   - Track impressions, clicks, dwell time
+   - Update weights based on engagement
+   - Smooth weight updates (prevent overfitting)
+
+**Tasks:**
+- [x] Implement scoring functions (lib/ranking-algorithm.ts)
+- [ ] Add topic extraction (keyword matching)
+- [ ] Create weight update jobs
+- [ ] Test with sample data","algorithm,ml,backend,phase-2","Phase 2: News Aggregation",,P0
+"[Feature] Create /fetch-daily-news slash command","Implement Claude Code slash command to manually trigger news aggregation.
+
+**Reference:** .claude/commands/fetch-daily-news.md
+
+**Sources to fetch:**
+Tier 1: HN, Reddit, Dev.to
+Tier 2: Expert blogs (Paul Graham, Simon Willison, Seth Godin, etc.)
+Tier 3: General news (NYT, BBC)
+
+**Tasks:**
+- [x] Create command file
+- [ ] Implement RSS parsing
+- [ ] Add topic detection
+- [ ] Store articles in database
+- [ ] Handle duplicates
+- [ ] Error handling for failed sources
+- [ ] Report fetch statistics
+
+**Output:**
+- Number of articles fetched
+- Sources covered
+- Top topics detected","feature,claude-code,phase-2","Phase 2: News Aggregation",,P1
+"[Feature] Build MCP server for news aggregation","Create Model Context Protocol server for standardized news API integration.
+
+**Goals:**
+- Provide unified interface for multiple news sources
+- Cache API responses to avoid rate limits
+- Support RSS, REST APIs, and web scraping
+
+**Sources:**
+- NewsAPI (requires API key)
+- HN Official API
+- Reddit API
+- RSS feeds
+
+**Tasks:**
+- [ ] Set up MCP server structure
+- [ ] Implement NewsAPI integration
+- [ ] Implement HN API integration
+- [ ] Add RSS feed parser
+- [ ] Implement caching layer
+- [ ] Add rate limiting
+- [ ] Document API endpoints
+
+**Testing:**
+- [ ] Test each source independently
+- [ ] Test error handling
+- [ ] Verify cache works","feature,mcp,backend,phase-2","Phase 2: News Aggregation",,P1
+"[Feature] Create dashboard-curator skill","Claude Code skill for intelligent news curation and filtering.
+
+**Responsibilities:**
+1. Filter news by relevance to user interests
+2. Detect trending topics across sources
+3. Summarize articles
+4. Pull from expert sources (based on SME experts in other skills)
+
+**Expert sources to include:**
+- April Dunford (positioning)
+- Rob Fitzpatrick (customer development)
+- Paul Graham (startups)
+- Simon Willison (tech)
+- Julia Evans (dev tools)
+- Seth Godin (marketing)
+
+**Tasks:**
+- [ ] Create skill file (.claude/skills/dashboard-curator.md)
+- [ ] Define expert source list
+- [ ] Implement filtering logic
+- [ ] Add trend detection
+- [ ] Test with real data","feature,skill,claude-code,phase-2","Phase 2: News Aggregation",,P1
+"[UI] Create news feed widget","Display ranked articles with glassmorphic cards.
+
+**Features:**
+- Infinite scroll or pagination
+- Timeframe toggle (4hr / 24hr / 7day)
+- Personalized score badge
+- Quick actions (upvote/downvote/save)
+- Click tracking
+- Impression tracking
+
+**Design:**
+- Use glassmorphic cards (glass-medium)
+- Show score prominently (⭐ 9.2)
+- Display source, author, timestamp
+- Show topic tags
+- Hover effects
+
+**Tasks:**
+- [ ] Create NewsWidget component
+- [ ] Add timeframe selector
+- [ ] Implement scoring display
+- [ ] Add click handlers
+- [ ] Track impressions on mount
+- [ ] Add infinite scroll
+- [ ] Responsive design","feature,ui,frontend,phase-1","Phase 1: Core Dashboard",,P0
+"[UI] Create todo list widget","Simple todo list with CRUD operations and persistence.
+
+**Features:**
+- Add/edit/delete todos
+- Mark complete/incomplete
+- Due dates (optional)
+- Priority levels
+- Keyboard shortcuts (Enter to add, Esc to cancel)
+
+**Design:**
+- Glassmorphic card
+- Checkboxes with smooth animations
+- Inline editing
+- Sort by priority/date
+
+**Tasks:**
+- [ ] Create TodoList component
+- [ ] Create API routes (/api/todos)
+- [ ] Add database queries
+- [ ] Implement CRUD operations
+- [ ] Add keyboard shortcuts
+- [ ] Persist state to SQLite","feature,ui,frontend,phase-1","Phase 1: Core Dashboard",,P1
+"[UI] Create daily summary widget","Display curated daily summary and stats.
+
+**Content:**
+- Top articles of the day
+- Reading stats (articles read, time spent)
+- Trending topics
+- Personalized insights
+
+**Design:**
+- Hero card at top of dashboard
+- Gradient background
+- Icon indicators
+- Animated counters
+
+**Tasks:**
+- [ ] Create DailySummary component
+- [ ] Generate summary data from database
+- [ ] Add reading stats calculation
+- [ ] Implement trend detection
+- [ ] Add refresh button
+- [ ] Cache summary (regenerate daily)","feature,ui,frontend,phase-1","Phase 1: Core Dashboard",,P2
+"[UI] Implement light/dark mode toggle","Add theme switcher with persistence.
+
+**Features:**
+- Toggle button (moon/sun icon)
+- Smooth transitions
+- Persist preference to localStorage
+- Respect system preference initially
+- Update all glassmorphic styles
+
+**Tasks:**
+- [ ] Create ThemeToggle component
+- [ ] Add theme context/provider
+- [ ] Update Tailwind dark mode classes
+- [ ] Test all components in both modes
+- [ ] Add smooth transitions
+- [ ] Persist to localStorage","feature,ui,enhancement,phase-3","Phase 3: Polish",,P2
+"[Analytics] Implement engagement tracking","Track user interactions for algorithm learning.
+
+**Signals to track:**
+1. Impressions (article shown in feed)
+2. Clicks (article opened)
+3. Dwell time (time spent reading)
+4. Ratings (upvote/downvote)
+5. Saves (bookmark for later)
+
+**Implementation:**
+- Client-side tracking with API calls
+- Debounce/throttle for performance
+- Queue events (batch send)
+- Privacy-first (local only, no external analytics)
+
+**Tasks:**
+- [ ] Create analytics utility (lib/analytics.ts)
+- [ ] Add impression tracking (IntersectionObserver)
+- [ ] Track clicks on article links
+- [ ] Measure dwell time (Page Visibility API)
+- [ ] Create rating UI (👍/👎)
+- [ ] Create save button (💾)
+- [ ] Add API endpoints for tracking","feature,analytics,backend,phase-2","Phase 2: News Aggregation",,P1
+"[Analytics] Create personal insights dashboard","Show user their reading patterns and preferences.
+
+**Metrics:**
+- Top sources (by engagement)
+- Top topics (by reads)
+- Reading time (daily/weekly)
+- Most active times
+- Source performance (CTR, avg rating)
+
+**Visualizations:**
+- Bar charts for top sources/topics
+- Line chart for reading time
+- Heatmap for active times (optional)
+- Source weight visualization
+
+**Tasks:**
+- [ ] Create InsightsDashboard component
+- [ ] Query engagement data
+- [ ] Calculate metrics
+- [ ] Add simple charts (or use chart library)
+- [ ] Make it shareable (export JSON)","feature,analytics,ui,phase-3","Phase 3: Polish",,P2
+"[Algorithm] Daily weight update job","Automated job to recalculate source/topic/author weights.
+
+**Trigger:**
+- Run daily at 3am (or on demand)
+- Update all learned weights based on past 30 days
+
+**Process:**
+1. Calculate engagement metrics per source
+2. Update source_weights table
+3. Update topic_preferences table
+4. Update author_weights table
+5. Log changes
+
+**Tasks:**
+- [ ] Create update job (lib/jobs/update-weights.ts)
+- [ ] Add cron scheduler (node-cron)
+- [ ] Test weight calculations
+- [ ] Add logging
+- [ ] Handle edge cases (new sources, no data)
+- [ ] Expose manual trigger endpoint","feature,automation,backend,phase-2","Phase 2: News Aggregation",,P1
+"[Hook] Create daily-content-fetch hook","Claude Code hook to automatically fetch news every morning.
+
+**Trigger:**
+- User-prompt-submit (check time, run if morning)
+- Or: Separate scheduled hook (if supported)
+
+**Behavior:**
+1. Check if already run today
+2. Trigger /fetch-daily-news command
+3. Update daily_summaries table
+4. Notify user (optional)
+
+**Tasks:**
+- [ ] Create hook file (.claude/hooks/daily-fetch.md)
+- [ ] Add time checking logic
+- [ ] Integrate with fetch command
+- [ ] Add notifications
+- [ ] Handle errors gracefully
+- [ ] Document hook behavior","feature,automation,claude-code,phase-3","Phase 3: Polish",,P2
+"[Documentation] Write comprehensive README","Create portfolio-ready README with screenshots and examples.
+
+**Sections:**
+- Project overview
+- Features list
+- Tech stack
+- Quick start (Docker + local)
+- Screenshots/GIFs
+- Architecture diagram
+- Personal algo explanation
+- Contributing guidelines (even if personal project)
+
+**Tasks:**
+- [x] Write initial README
+- [ ] Add screenshots
+- [ ] Create demo GIF
+- [ ] Add architecture diagram (draw.io or Mermaid)
+- [ ] Document all commands
+- [ ] Add troubleshooting section","documentation,portfolio,phase-3","Phase 3: Polish",,P1
+"[Documentation] Create setup video/tutorial","Record setup walkthrough for portfolio.
+
+**Content:**
+- Show Docker setup
+- Demonstrate hot reload
+- Showcase design system
+- Explain personal algorithm
+- Show analytics dashboard
+
+**Tasks:**
+- [ ] Record screen capture
+- [ ] Edit video (cut dead time)
+- [ ] Add captions
+- [ ] Upload to YouTube
+- [ ] Link in README","documentation,portfolio,phase-3","Phase 3: Polish",,P3
+"[Testing] Add unit tests for ranking algorithm","Test scoring functions and weight updates.
+
+**Test cases:**
+- Recency scoring
+- Popularity normalization
+- Source weight calculation
+- Topic matching
+- Cold start vs personalized scoring
+- Edge cases (no data, extreme values)
+
+**Tools:**
+- Jest + React Testing Library
+- Test with mock database
+
+**Tasks:**
+- [ ] Set up Jest configuration
+- [ ] Write tests for scoring functions
+- [ ] Write tests for weight updates
+- [ ] Mock database queries
+- [ ] Achieve >80% coverage for algorithm code","testing,backend,phase-3","Phase 3: Polish",,P2
+"[Testing] Add E2E tests for critical flows","Test user journeys with Playwright.
+
+**Flows to test:**
+1. View news feed
+2. Click article (track engagement)
+3. Rate article (upvote/downvote)
+4. Save article
+5. Add todo
+6. Switch theme
+
+**Tasks:**
+- [ ] Set up Playwright
+- [ ] Write E2E tests
+- [ ] Run in CI (GitHub Actions)
+- [ ] Add visual regression tests (optional)","testing,e2e,phase-3","Phase 3: Polish",,P3
+"[Security] Conduct security review","Audit code for common vulnerabilities.
+
+**Check for:**
+- SQL injection (use parameterized queries)
+- XSS vulnerabilities (sanitize inputs)
+- Secrets in code (use .env)
+- Dependency vulnerabilities (npm audit)
+- CORS configuration
+- Rate limiting on APIs
+
+**Tasks:**
+- [ ] Run npm audit
+- [ ] Review all database queries
+- [ ] Check input sanitization
+- [ ] Verify .env handling
+- [ ] Add rate limiting
+- [ ] Document security measures","security,review,phase-3","Phase 3: Polish",,P0
+"[Performance] Optimize database queries","Add indexes and optimize slow queries.
+
+**Optimizations:**
+- Add indexes on frequently queried columns
+- Use prepared statements
+- Implement query caching
+- Paginate large result sets
+- Archive old articles (>30 days)
+
+**Tasks:**
+- [ ] Profile slow queries
+- [ ] Add missing indexes
+- [ ] Implement query caching
+- [ ] Add pagination
+- [ ] Set up archival job","performance,backend,optimization,phase-3","Phase 3: Polish",,P2
+"[Performance] Implement lazy loading for images","Lazy load article images to improve initial load time.
+
+**Tasks:**
+- [ ] Add next/image component
+- [ ] Configure image domains
+- [ ] Implement lazy loading
+- [ ] Add loading skeletons
+- [ ] Test performance improvement","performance,frontend,optimization,phase-3","Phase 3: Polish",,P2
+"[Feature] Add keyboard shortcuts","Implement keyboard navigation for power users.
+
+**Shortcuts:**
+- j/k: Navigate articles
+- o: Open article
+- u: Upvote
+- d: Downvote
+- s: Save article
+- /: Focus search
+- ?: Show shortcuts help
+- t: Toggle theme
+
+**Tasks:**
+- [ ] Create keyboard handler
+- [ ] Add shortcuts modal (press ?)
+- [ ] Test in all browsers
+- [ ] Document shortcuts","enhancement,ux,phase-3","Phase 3: Polish",,P2
+"[Feature] Add search/filter for articles","Search articles by title, source, or topic.
+
+**Features:**
+- Full-text search
+- Filter by source
+- Filter by topic
+- Filter by date range
+- Save search queries
+
+**Implementation:**
+- Use SQLite FTS5 for full-text search
+- Client-side filtering for UI responsiveness
+
+**Tasks:**
+- [ ] Create search UI
+- [ ] Implement FTS5 in database
+- [ ] Add filter dropdowns
+- [ ] Add search results page
+- [ ] Add saved searches","enhancement,feature,phase-3","Phase 3: Polish",,P3
+"[Feature] Export data (JSON/CSV)","Allow users to export their data.
+
+**Export options:**
+- Reading history (JSON)
+- Saved articles (CSV)
+- Source weights (JSON)
+- Topic preferences (JSON)
+- Todo list (CSV)
+
+**Tasks:**
+- [ ] Create export API endpoints
+- [ ] Add export UI (button)
+- [ ] Implement JSON export
+- [ ] Implement CSV export
+- [ ] Add import functionality (restore data)","feature,data,enhancement,phase-3","Phase 3: Polish",,P3
+"[Deployment] Set up CI/CD with GitHub Actions","Automate testing and deployment.
+
+**Workflows:**
+1. Test on push (lint, typecheck, tests)
+2. Build Docker image on main push
+3. Deploy to production (optional)
+
+**Tasks:**
+- [ ] Create .github/workflows/test.yml
+- [ ] Create .github/workflows/build.yml
+- [ ] Add deployment workflow (Fly.io / Railway)
+- [ ] Set up secrets in GitHub
+- [ ] Test workflows","devops,ci-cd,deployment,phase-3","Phase 3: Polish",,P2
+"[Deployment] Deploy to Fly.io","Deploy production version to Fly.io.
+
+**Tasks:**
+- [ ] Install flyctl
+- [ ] Create fly.toml
+- [ ] Set up PostgreSQL database
+- [ ] Configure secrets
+- [ ] Deploy app
+- [ ] Set up custom domain (optional)
+- [ ] Monitor logs","deployment,production,phase-3","Phase 3: Polish",,P3
+"[Enhancement] Add browser notifications","Notify users of breaking news or daily summary ready.
+
+**Features:**
+- Request permission on first load
+- Notify for breaking news (>90% score)
+- Daily summary notification (9am)
+- Allow user to disable
+
+**Tasks:**
+- [ ] Implement Web Push API
+- [ ] Add notification permission UI
+- [ ] Trigger notifications based on conditions
+- [ ] Add user preferences
+- [ ] Test on multiple browsers","enhancement,notifications,phase-3","Phase 3: Polish",,P3
+"[Enhancement] Mobile responsive design","Ensure dashboard works well on mobile devices.
+
+**Breakpoints:**
+- Mobile: <640px
+- Tablet: 640-1024px
+- Desktop: >1024px
+
+**Tasks:**
+- [ ] Test on mobile devices
+- [ ] Adjust grid layouts
+- [ ] Optimize touch targets
+- [ ] Test glassmorphic effects on mobile
+- [ ] Add swipe gestures (optional)","enhancement,mobile,ui,phase-3","Phase 3: Polish",,P2
+"[Enhancement] Add social sharing","Share articles or your reading stats.
+
+**Share options:**
+- Share article link
+- Share reading stats card (generate image)
+- Share top articles of the week
+
+**Tasks:**
+- [ ] Add share buttons
+- [ ] Generate shareable images (OG images)
+- [ ] Implement Web Share API
+- [ ] Test on social platforms","enhancement,social,phase-3","Phase 3: Polish",,P3
