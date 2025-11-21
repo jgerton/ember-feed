@@ -4,9 +4,10 @@ import { prisma } from '@/lib/db'
 // POST /api/articles/[id]/activity - Track user activity for AI-tailored feed
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params
     const body = await request.json()
     const { action } = body
 

@@ -16,7 +16,9 @@
       "Bash(npx playwright test:*)",
       "Bash(docker-compose down:*)",
       "Bash(docker-compose up:*)",
-      "Bash(gh issue list:*)"
+      "Bash(gh issue list:*)",
+      "Bash(curl:*)",
+      "Bash(docker-compose logs:*)"
     ],
     "deny": [],
     "ask": []

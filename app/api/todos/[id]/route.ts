@@ -4,9 +4,10 @@ import { prisma } from '@/lib/db'
 // PATCH /api/todos/[id] - Update a todo
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params
     const body = await request.json()
     const { text, completed } = body
 
@@ -32,9 +33,10 @@ export async function PATCH(
 // DELETE /api/todos/[id] - Delete a todo
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params
     await prisma.todo.delete({
       where: { id: params.id }
     })
