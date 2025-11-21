@@ -8,7 +8,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:init": "node -e \"require('./lib/db').default()\""
+    "db:init": "node -e \"require('./lib/db').default()\"",
+    "test:visual": "playwright test --headed",
+    "test:visual:headless": "playwright test",
+    "test:visual:ui": "playwright test --ui",
+    "snapshot": "playwright test tests/visual.spec.ts --headed --grep 'homepage renders correctly'"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.5",
@@ -19,6 +23,7 @@
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/better-sqlite3": "^7.6.9",
     "@types/node": "^22.19.1",
@@ -27,6 +32,7 @@
     "autoprefixer": "^10.4.0",
     "eslint": "^9",
     "eslint-config-next": "^16.0.3",
+    "playwright": "^1.56.1",
     "postcss": "^8.4.0",
     "tailwindcss": "^4.1.17",
     "typescript": "^5"
