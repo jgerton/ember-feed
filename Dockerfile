@@ -14,6 +14,9 @@ RUN npm install
 # In dev, this will be overridden by volume mount
 COPY . .
 
+# Generate Prisma client
+RUN npx prisma generate
+
 # Expose Next.js default port
 EXPOSE 3000
 
