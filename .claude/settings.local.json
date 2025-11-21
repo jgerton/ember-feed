@@ -13,7 +13,10 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nchore: upgrade to Next.js 16, React 19, Tailwind 4\n\n- Upgraded Next.js from 14.2.33 to 16.0.3\n- Upgraded React and react-dom to 19.2.0\n- Upgraded Tailwind CSS to 4.1.17 with @tailwindcss/postcss plugin\n- Added Turbopack configuration for Next.js 16\n- Updated PostCSS config for Tailwind 4 compatibility\n- Replaced @apply directives with regular CSS (Tailwind 4 requirement)\n- Updated TypeScript moduleResolution to ''bundler''\n- Changed Docker port mapping to 3002:3000 (avoid port conflicts)\n- Fixed Tailwind class names (warm-gray → neutral)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git checkout:*)",
       "Bash(git commit:*)",
-      "Bash(npx playwright test:*)"
+      "Bash(npx playwright test:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(gh issue list:*)"
     ],
     "deny": [],
     "ask": []

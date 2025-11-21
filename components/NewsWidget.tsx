@@ -32,9 +32,12 @@ export default function NewsWidget() {
     fetchArticles()
   }, [])
 
-  const fetchArticles = async () => {
+  const fetchArticles = async (personalized: boolean = true) => {
     try {
-      const res = await fetch('/api/articles?limit=10')
+      const url = personalized
+        ? '/api/articles?limit=10&personalized=true'
+        : '/api/articles?limit=10'
+      const res = await fetch(url)
       if (!res.ok) throw new Error('Failed to fetch articles')
       const data = await res.json()
       setArticles(data)
