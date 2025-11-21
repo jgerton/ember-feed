@@ -13,7 +13,7 @@
   "dependencies": {
     "better-sqlite3": "^9.4.0",
     "date-fns": "^3.0.0",
-    "next": "^14.2.33",
+    "next": "^16.0.3",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "rss-parser": "^3.13.0"
