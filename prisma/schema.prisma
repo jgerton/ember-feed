@@ -1,0 +1,68 @@
+// Prisma schema for Ember Feed
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Todo model for task management
+model Todo {
+  id        String   @id @default(cuid())
+  text      String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("todos")
+}
+
+// Article model for news feed
+model Article {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  url         String   @unique
+  source      String
+  score       Int      @default(0)
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+
+  // Relations
+  activities  UserActivity[]
+
+  @@map("articles")
+  @@index([publishedAt])
+  @@index([score])
+}
+
+// User activity tracking for AI-tailored feed algorithm
+model UserActivity {
+  id        String   @id @default(cuid())
+  articleId String
+  action    String   // "read", "upvote", "downvote", "save"
+  timestamp DateTime @default(now())
+
+  // Relations
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("user_activities")
+  @@index([articleId])
+  @@index([timestamp])
+}
+
+// Daily log entries for discoveries, blockers, accomplishments
+model LogEntry {
+  id        String   @id @default(cuid())
+  type      String   // "discovery", "blocker", "accomplishment", "thought"
+  content   String
+  tags      String?  // JSON array of tags
+  createdAt DateTime @default(now())
+
+  @@map("log_entries")
+  @@index([type])
+  @@index([createdAt])
+}

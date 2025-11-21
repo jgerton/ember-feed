@@ -26,18 +26,21 @@ export default function DailySummary() {
     else if (hour < 18) setGreeting('Good afternoon')
     else setGreeting('Good evening')
 
-    // Load todo stats from localStorage
-    try {
-      const stored = localStorage.getItem('ember-feed-todos')
-      if (stored) {
-        const todos = JSON.parse(stored)
+    // Load todo stats from API
+    const fetchTodoStats = async () => {
+      try {
+        const res = await fetch('/api/todos')
+        if (!res.ok) throw new Error('Failed to fetch todos')
+        const todos = await res.json()
         const active = todos.filter((t: { completed: boolean }) => !t.completed).length
         const completed = todos.filter((t: { completed: boolean }) => t.completed).length
         setStats(prev => ({ ...prev, activeTasks: active, completedTasks: completed }))
+      } catch (e) {
+        console.error('Failed to load todo stats', e)
       }
-    } catch (e) {
-      console.error('Failed to load todo stats', e)
     }
+
+    fetchTodoStats()
   }, [])
 
   return (

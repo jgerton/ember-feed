@@ -3,58 +3,82 @@
 import { useState, useEffect } from 'react'
 
 interface Todo {
-  id: number
+  id: string
   text: string
   completed: boolean
   createdAt: string
 }
 
-const STORAGE_KEY = 'ember-feed-todos'
-
 export default function TodoList() {
   const [todos, setTodos] = useState<Todo[]>([])
   const [newTodo, setNewTodo] = useState('')
+  const [loading, setLoading] = useState(true)
 
-  // Load todos from localStorage on mount
+  // Load todos from API on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      try {
-        setTodos(JSON.parse(stored))
-      } catch (e) {
-        console.error('Failed to parse todos from localStorage', e)
-      }
-    }
+    fetchTodos()
   }, [])
 
-  // Save todos to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(todos))
-  }, [todos])
+  const fetchTodos = async () => {
+    try {
+      const res = await fetch('/api/todos')
+      if (!res.ok) throw new Error('Failed to fetch todos')
+      const data = await res.json()
+      setTodos(data)
+    } catch (error) {
+      console.error('Error fetching todos:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const addTodo = (e: React.FormEvent) => {
+  const addTodo = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newTodo.trim()) return
 
-    const todo: Todo = {
-      id: Date.now(),
-      text: newTodo.trim(),
-      completed: false,
-      createdAt: new Date().toISOString()
+    try {
+      const res = await fetch('/api/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: newTodo.trim() })
+      })
+
+      if (!res.ok) throw new Error('Failed to create todo')
+      const todo = await res.json()
+      setTodos([todo, ...todos])
+      setNewTodo('')
+    } catch (error) {
+      console.error('Error creating todo:', error)
     }
-
-    setTodos([todo, ...todos])
-    setNewTodo('')
   }
 
-  const toggleTodo = (id: number) => {
-    setTodos(todos.map(todo =>
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ))
+  const toggleTodo = async (id: string) => {
+    const todo = todos.find(t => t.id === id)
+    if (!todo) return
+
+    try {
+      const res = await fetch(`/api/todos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: !todo.completed })
+      })
+
+      if (!res.ok) throw new Error('Failed to update todo')
+      const updated = await res.json()
+      setTodos(todos.map(t => t.id === id ? updated : t))
+    } catch (error) {
+      console.error('Error updating todo:', error)
+    }
   }
 
-  const deleteTodo = (id: number) => {
-    setTodos(todos.filter(todo => todo.id !== id))
+  const deleteTodo = async (id: string) => {
+    try {
+      const res = await fetch(`/api/todos/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete todo')
+      setTodos(todos.filter(t => t.id !== id))
+    } catch (error) {
+      console.error('Error deleting todo:', error)
+    }
   }
 
   const activeTodos = todos.filter(t => !t.completed)
@@ -148,8 +172,15 @@ export default function TodoList() {
           </>
         )}
 
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-8 text-neutral-500 text-sm">
+            Loading todos...
+          </div>
+        )}
+
         {/* Empty State */}
-        {todos.length === 0 && (
+        {!loading && todos.length === 0 && (
           <div className="text-center py-8 text-neutral-500 text-sm">
             No tasks yet. Add one above to get started!
           </div>
