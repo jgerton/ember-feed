@@ -46,3 +46,7 @@ dev.db
 
 # Documentation (may contain sensitive information)
 /docs
+
+# Playwright
+playwright-report/
+test-results/
