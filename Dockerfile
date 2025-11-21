@@ -1,6 +1,6 @@
 # Development Dockerfile
-# Based on Node.js 18 LTS Alpine (minimal, fast)
-FROM node:18-alpine
+# Based on Node.js 22 LTS Alpine (minimal, fast)
+FROM node:22-alpine
 
 # Set working directory
 WORKDIR /app
