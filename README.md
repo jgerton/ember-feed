@@ -3,6 +3,7 @@
 A modern, glassmorphic personal dashboard with news aggregation, todo list, and daily summaries. Built with Next.js, React, and TailwindCSS.
 
 ![Dashboard Preview](./docs/screenshot.png) <!-- Add screenshot later -->
+Coming soon, screenshot for dashboard preview.
 
 ## Features
 
