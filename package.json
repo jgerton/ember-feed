@@ -14,14 +14,14 @@
     "better-sqlite3": "^9.4.0",
     "date-fns": "^3.0.0",
     "next": "^14.2.33",
-    "react": "^18.3.0",
+    "react": "^19.2.0",
     "react-dom": "^18.3.0",
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.9",
     "@types/node": "^20",
-    "@types/react": "^18",
+    "@types/react": "^19",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.0",
     "eslint": "^8",
