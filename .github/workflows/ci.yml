@@ -25,9 +25,7 @@ jobs:
         run: npm ci
 
       - name: Run linter
-        run: echo "ESLint 9 migration needed - skipping for now"
-        # TODO: Migrate .eslintrc.json to eslint.config.js for ESLint 9
-        # run: npm run lint
+        run: npm run lint
 
   test:
     name: Test on Node ${{ matrix.node-version }}
