@@ -15,10 +15,9 @@ const nextConfig: NextConfig = {
   },
 
   // External packages for Server Components (native modules)
-  // @ts-ignore - experimental type not yet in NextConfig
-  experimental: {
-    serverComponentsExternalPackages: ['re2', 'better-sqlite3', 'metascraper'],
-  },
+  // Moved from experimental.serverComponentsExternalPackages (deprecated in Next.js 16)
+  // @ts-ignore - serverExternalPackages type not yet in NextConfig
+  serverExternalPackages: ['re2', 'better-sqlite3', 'metascraper'],
 
   // Keep webpack config for backwards compatibility if needed
   webpack: (config, { dev }) => {

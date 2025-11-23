@@ -82,7 +82,7 @@ export default function SearchBar({ onResults }: SearchBarProps) {
       if (!res.ok) return
       const data = await res.json()
       const articles = data.articles || []
-      const uniqueSources = [...new Set(articles.map((a: Article) => a.source))]
+      const uniqueSources = [...new Set(articles.map((a: Article) => a.source))] as string[]
       setSources(uniqueSources.sort())
     } catch (error) {
       console.error('Error fetching sources:', error)
