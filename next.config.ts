@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   // Temporarily disabled due to Edge runtime compilation issues
   // experimental: {
   //   instrumentationHook: true,
+  //   serverComponentsExternalPackages: ['re2', 'better-sqlite3'],
   // },
 
   // Turbopack config (Next.js 16 default bundler)
@@ -11,6 +12,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     // Turbopack has better file watching than webpack by default
     // No additional config needed for Docker hot reload
+  },
+
+  // External packages for Server Components (native modules)
+  // @ts-ignore - experimental type not yet in NextConfig
+  experimental: {
+    serverComponentsExternalPackages: ['re2', 'better-sqlite3', 'metascraper'],
   },
 
   // Keep webpack config for backwards compatibility if needed
