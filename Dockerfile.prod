@@ -15,8 +15,13 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Copy source and build
+# Copy source
 COPY . .
+
+# Generate Prisma Client before build
+RUN npx prisma generate
+
+# Build application
 RUN npm run build
 
 # Stage 3: Production runtime (minimal image)

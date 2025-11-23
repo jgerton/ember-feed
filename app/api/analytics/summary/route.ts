@@ -123,7 +123,7 @@ export async function GET(request: Request) {
       return acc
     }, {} as Record<string, { article: any, upvotes: number }>)
 
-    const topUpvotedArticles = Object.values(upvotesByArticle)
+    const topUpvotedArticles = (Object.values(upvotesByArticle) as Array<{ article: any; upvotes: number }>)
       .sort((a, b) => b.upvotes - a.upvotes)
       .slice(0, 5)
 
