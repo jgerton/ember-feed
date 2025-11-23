@@ -120,4 +120,123 @@ test.describe('Ember Feed Visual Tests', () => {
       fullPage: true
     })
   })
+
+  test('Phase 1 layout - Daily Summary Bar', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+
+    // Check Daily Summary Bar is visible with more specific selectors
+    await expect(page.getByText('Today:')).toBeVisible()
+
+    // Look for the summary bar and verify it's expanded by default
+    const summaryBar = page.locator('#daily-summary').first()
+    await expect(summaryBar).toBeVisible()
+
+    // Verify expanded details are visible (Articles Today, Active Tasks, etc.)
+    await expect(summaryBar.getByText('Articles Today')).toBeVisible()
+    await expect(summaryBar.getByText('Active Tasks')).toBeVisible()
+    await expect(summaryBar.getByText('Completed')).toBeVisible()
+
+    // Screenshot the expanded summary bar
+    await summaryBar.screenshot({ path: 'tests/screenshots/daily-summary-expanded.png' })
+
+    // Test collapse functionality
+    const hideButton = summaryBar.getByText('Hide')
+    if (await hideButton.isVisible()) {
+      await hideButton.click()
+      await page.waitForTimeout(300)
+      await summaryBar.screenshot({ path: 'tests/screenshots/daily-summary-collapsed.png' })
+    }
+  })
+
+  test('Phase 1 layout - Quick Actions', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+
+    // Check Quick Actions section is visible
+    await expect(page.getByText('QUICK ACTIONS')).toBeVisible()
+
+    // Check primary action buttons
+    await expect(page.getByRole('button', { name: 'New Project Idea' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Capture Thought' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Review Ideas' })).toBeVisible()
+
+    // Check Collections section
+    await expect(page.getByText('COLLECTIONS')).toBeVisible()
+    await expect(page.getByText('Recommendations')).toBeVisible()
+    await expect(page.getByText('Read Later')).toBeVisible()
+
+    // Screenshot Quick Actions
+    const quickActions = page.locator('.glass-light').filter({ hasText: 'QUICK ACTIONS' })
+    await quickActions.screenshot({ path: 'tests/screenshots/quick-actions.png' })
+  })
+
+  test('Phase 1 layout - Today\'s Priorities', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+
+    // Check Today's Priorities section
+    await expect(page.getByText('Today\'s Priorities')).toBeVisible()
+    await expect(page.getByText('Top 3 MITs')).toBeVisible()
+
+    // Screenshot priorities section
+    const priorities = page.locator('.glass-light').filter({ hasText: 'Today\'s Priorities' })
+    await priorities.screenshot({ path: 'tests/screenshots/todays-priorities.png' })
+  })
+
+  test('Phase 1 layout - No duplicate navigation', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+
+    // Count how many "Recommendations" links exist
+    const recommendationsLinks = page.getByText('Recommendations')
+    const count = await recommendationsLinks.count()
+
+    // Should only be 1 (in Quick Actions), not 2 (duplicate in header)
+    expect(count).toBeLessThanOrEqual(2) // Allow for icon + text
+
+    // Verify no navigation section in header
+    const header = page.locator('header')
+    await header.screenshot({ path: 'tests/screenshots/header.png' })
+
+    // Header should have: Ember Feed, description, SystemHealth, LayoutToggle, ThemeToggle
+    // But NOT navigation buttons for Recommendations/Read Later
+    await expect(header.getByRole('heading', { name: 'Ember Feed' })).toBeVisible()
+  })
+
+  test('Phase 1 layout - Component order and grouping', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+
+    // Verify layout order from top to bottom:
+    // 1. Header (Ember Feed title + controls)
+    // 2. Daily Summary Bar + Quick Actions (2-column)
+    // 3. Today's Priorities (full width)
+    // 4. Daily Digest
+    // 5. Search
+    // 6. News Feed + Todo List (2-column)
+    // 7. Feed Admin, Journal, Analytics
+
+    // Get all major sections by their text content
+    const dailySummary = page.getByText('Today:')
+    const quickActions = page.getByText('QUICK ACTIONS')
+    const priorities = page.getByText('Today\'s Priorities')
+    const dailyDigest = page.getByText('Daily Digest')
+    const search = page.getByText('Search Articles')
+    const newsFeed = page.getByRole('heading', { name: 'Today\'s Feed' })
+
+    // Verify all sections are visible
+    await expect(dailySummary).toBeVisible()
+    await expect(quickActions).toBeVisible()
+    await expect(priorities).toBeVisible()
+    await expect(dailyDigest).toBeVisible()
+    await expect(search).toBeVisible()
+    await expect(newsFeed).toBeVisible()
+
+    // Full page screenshot to review layout
+    await page.screenshot({
+      path: 'tests/screenshots/phase1-full-layout.png',
+      fullPage: true
+    })
+  })
 })

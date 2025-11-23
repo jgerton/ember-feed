@@ -53,28 +53,40 @@ export default function DailySummary() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Total Articles */}
-        <div className="glass-light rounded-xl p-4 text-center">
-          <div className="text-3xl font-bold text-ember-500">{stats.totalArticles}</div>
-          <div className="text-sm text-neutral-400 mt-1">Articles Today</div>
-        </div>
+        <a
+          href="#news-feed"
+          className="glass-light rounded-xl p-4 text-center hover:glass-medium transition-all duration-200 cursor-pointer group"
+        >
+          <div className="text-3xl font-bold text-ember-500 group-hover:text-ember-400 transition-colors">{stats.totalArticles}</div>
+          <div className="text-sm text-neutral-400 mt-1 group-hover:text-neutral-300 transition-colors">Articles Today</div>
+        </a>
 
         {/* Top Score */}
-        <div className="glass-light rounded-xl p-4 text-center">
-          <div className="text-3xl font-bold text-ember-500">{stats.topScore}</div>
-          <div className="text-sm text-neutral-400 mt-1">Top Score</div>
-        </div>
+        <a
+          href="#news-feed"
+          className="glass-light rounded-xl p-4 text-center hover:glass-medium transition-all duration-200 cursor-pointer group"
+        >
+          <div className="text-3xl font-bold text-ember-500 group-hover:text-ember-400 transition-colors">{stats.topScore}</div>
+          <div className="text-sm text-neutral-400 mt-1 group-hover:text-neutral-300 transition-colors">Top Score</div>
+        </a>
 
         {/* Active Tasks */}
-        <div className="glass-light rounded-xl p-4 text-center">
-          <div className="text-3xl font-bold text-ember-500">{stats.activeTasks}</div>
-          <div className="text-sm text-neutral-400 mt-1">Active Tasks</div>
-        </div>
+        <a
+          href="#quick-tasks"
+          className="glass-light rounded-xl p-4 text-center hover:glass-medium transition-all duration-200 cursor-pointer group"
+        >
+          <div className="text-3xl font-bold text-ember-500 group-hover:text-ember-400 transition-colors">{stats.activeTasks}</div>
+          <div className="text-sm text-neutral-400 mt-1 group-hover:text-neutral-300 transition-colors">Active Tasks</div>
+        </a>
 
         {/* Completed Tasks */}
-        <div className="glass-light rounded-xl p-4 text-center">
-          <div className="text-3xl font-bold text-green-500">{stats.completedTasks}</div>
-          <div className="text-sm text-neutral-400 mt-1">Completed</div>
-        </div>
+        <a
+          href="#quick-tasks"
+          className="glass-light rounded-xl p-4 text-center hover:glass-medium transition-all duration-200 cursor-pointer group"
+        >
+          <div className="text-3xl font-bold text-green-500 group-hover:text-green-400 transition-colors">{stats.completedTasks}</div>
+          <div className="text-sm text-neutral-400 mt-1 group-hover:text-neutral-300 transition-colors">Completed</div>
+        </a>
       </div>
 
       {/* Quick insight */}

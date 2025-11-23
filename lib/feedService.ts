@@ -1,5 +1,11 @@
 import Parser from 'rss-parser'
 import { prisma } from './db'
+import {
+  getActiveFeedsForSync,
+  recordFeedSuccess,
+  recordFeedFailure,
+  initializeDefaultFeeds
+} from './feedHealthService'
 
 const parser = new Parser({
   customFields: {
@@ -10,13 +16,6 @@ const parser = new Parser({
   }
 })
 
-// RSS feed URLs from environment
-const RSS_FEEDS = process.env.RSS_FEEDS?.split(',') || [
-  'https://hnrss.org/frontpage',
-  'https://www.reddit.com/r/technology/.rss',
-  'https://dev.to/feed'
-]
-
 interface FeedItem {
   title: string
   link: string
@@ -26,24 +25,37 @@ interface FeedItem {
 }
 
 export async function fetchAllFeeds(): Promise<FeedItem[]> {
+  // Initialize default feeds if database is empty
+  const feedCount = await prisma.rssFeed.count()
+  if (feedCount === 0) {
+    await initializeDefaultFeeds()
+  }
+
   const allItems: FeedItem[] = []
+  const feeds = await getActiveFeedsForSync()
 
-  for (const feedUrl of RSS_FEEDS) {
+  for (const feed of feeds) {
     try {
-      const feed = await parser.parseURL(feedUrl)
-      const sourceName = getSourceName(feedUrl)
+      const parsed = await parser.parseURL(feed.url)
 
-      const items = feed.items.slice(0, 10).map(item => ({
+      const items = parsed.items.slice(0, 10).map(item => ({
         title: item.title || 'Untitled',
         link: item.link || '',
         contentSnippet: item.contentSnippet || item.content?.substring(0, 200) || '',
         isoDate: item.isoDate,
-        source: sourceName
+        source: feed.name
       }))
 
       allItems.push(...items)
+
+      // Record success
+      await recordFeedSuccess(feed.id, items.length)
     } catch (error) {
-      console.error(`Failed to fetch feed ${feedUrl}:`, error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.error(`Failed to fetch feed ${feed.name}:`, errorMessage)
+
+      // Record failure with graceful degradation
+      await recordFeedFailure(feed.id, errorMessage)
     }
   }
 
@@ -86,19 +98,6 @@ export async function syncArticlesToDatabase() {
   }
 
   return { newCount, updatedCount, total: feedItems.length }
-}
-
-function getSourceName(feedUrl: string): string {
-  if (feedUrl.includes('hnrss.org')) return 'Hacker News'
-  if (feedUrl.includes('reddit.com')) return 'Reddit'
-  if (feedUrl.includes('dev.to')) return 'Dev.to'
-
-  try {
-    const url = new URL(feedUrl)
-    return url.hostname.replace('www.', '')
-  } catch {
-    return 'Unknown'
-  }
 }
 
 function calculateInitialScore(item: FeedItem): number {

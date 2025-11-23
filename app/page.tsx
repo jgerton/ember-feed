@@ -1,11 +1,16 @@
 'use client'
 
-import NewsWidget from '@/components/NewsWidget'
-import TodoList from '@/components/TodoList'
 import ThemeToggle from '@/components/ThemeToggle'
-import DailySummary from '@/components/DailySummary'
+import LayoutToggle from '@/components/LayoutToggle'
+import SystemHealthStatus from '@/components/SystemHealthStatus'
+import MorningBriefLayout from '@/components/layouts/MorningBriefLayout'
+import ZenDashboardLayout from '@/components/layouts/ZenDashboardLayout'
+import PrototypeLayout from '@/components/layouts/PrototypeLayout'
+import { useLayoutMode } from '@/hooks/useLayoutMode'
 
 export default function Home() {
+  const [layoutMode, setLayoutMode] = useLayoutMode()
+
   return (
     <main className="min-h-screen glass-background p-6 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -20,42 +25,22 @@ export default function Home() {
                 Your personalized news dashboard
               </p>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-3">
+              <SystemHealthStatus mode={layoutMode === 'morning-brief' ? 'multi-ring' : 'radial-gauge'} />
+              <LayoutToggle mode={layoutMode} onChange={setLayoutMode} />
+              <ThemeToggle />
+            </div>
           </div>
         </header>
 
-        {/* Main Dashboard Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* News Feed - Takes up 2 columns on large screens */}
-          <div className="lg:col-span-2">
-            <div className="glass-medium rounded-2xl p-6">
-              <h2 className="text-2xl font-bold text-neutral-50 mb-4">
-                Today's Feed
-              </h2>
-              <NewsWidget />
-            </div>
-          </div>
-
-          {/* Sidebar - Todo List */}
-          <div className="lg:col-span-1">
-            <div className="glass-medium rounded-2xl p-6">
-              <h2 className="text-2xl font-bold text-neutral-50 mb-4">
-                Quick Tasks
-              </h2>
-              <TodoList />
-            </div>
-          </div>
-        </div>
-
-        {/* Daily Summary Section */}
-        <div className="mt-6">
-          <div className="glass-light rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-neutral-50 mb-3">
-              Daily Summary
-            </h2>
-            <DailySummary />
-          </div>
-        </div>
+        {/* Layout Content - Conditionally render based on selected mode */}
+        {layoutMode === 'morning-brief' ? (
+          <MorningBriefLayout />
+        ) : layoutMode === 'zen-dashboard' ? (
+          <ZenDashboardLayout />
+        ) : (
+          <PrototypeLayout />
+        )}
       </div>
     </main>
   )

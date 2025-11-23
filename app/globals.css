@@ -46,6 +46,11 @@
   --color-info: #14b8a6;
 }
 
+/* Smooth scrolling for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
 /* Dark mode by default */
 body {
   background: linear-gradient(180deg, #1c1917 0%, #292524 100%);

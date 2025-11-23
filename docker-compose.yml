@@ -1,4 +1,20 @@
 services:
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    container_name: ember-feed-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   # Next.js application
   app:
     build:
@@ -19,10 +35,16 @@ services:
       # Enable hot reload polling for Windows/Mac
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
+      # Redis connection
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     stdin_open: true  # Keep container running for interactive debugging
     tty: true
     restart: unless-stopped
     command: npm run dev
+    depends_on:
+      redis:
+        condition: service_healthy
 
   # Optional: Add a database service later if needed
   # db:
@@ -38,5 +60,5 @@ services:
   #     - "5432:5432"
   #   restart: unless-stopped
 
-# volumes:
-#   postgres_data:
+volumes:
+  redis_data:

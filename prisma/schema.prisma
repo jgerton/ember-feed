@@ -18,6 +18,8 @@ model Todo {
   updatedAt DateTime @updatedAt
 
   @@map("todos")
+  @@index([completed]) // For filtering active/completed todos
+  @@index([completed, createdAt]) // Composite index for querying incomplete todos by date
 }
 
 // Article model for news feed
@@ -32,19 +34,30 @@ model Article {
   createdAt   DateTime @default(now())
 
   // Relations
-  activities  UserActivity[]
+  activities    UserActivity[]
+  topics        ArticleTopic[]
+  savedArticles SavedArticle[]
+  thoughts      Thought[]
 
   @@map("articles")
   @@index([publishedAt])
   @@index([score])
+  @@index([score, publishedAt]) // Composite index for feed loading
+  @@index([source]) // For source filtering
+  @@index([publishedAt, source]) // Covering index for recent articles by source
+  @@index([publishedAt, score, source]) // Covering index for personalized feed queries
 }
 
 // User activity tracking for AI-tailored feed algorithm
 model UserActivity {
-  id        String   @id @default(cuid())
-  articleId String
-  action    String   // "read", "upvote", "downvote", "save"
-  timestamp DateTime @default(now())
+  id               String   @id @default(cuid())
+  articleId        String
+  action           String   // "read", "upvote", "downvote", "save", "view"
+  timestamp        DateTime @default(now())
+
+  // Reading behavior analytics
+  durationSeconds  Int?     // Time spent on article in seconds
+  scrollPercentage Int?     // Scroll completion percentage (0-100)
 
   // Relations
   article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
@@ -52,6 +65,10 @@ model UserActivity {
   @@map("user_activities")
   @@index([articleId])
   @@index([timestamp])
+  @@index([action]) // For filtering by upvote, save, read actions
+  @@index([articleId, timestamp]) // Composite index for analytics queries
+  @@index([action, timestamp]) // For finding recent upvotes/saves
+  @@index([action, timestamp, articleId]) // Covering index for action-filtered queries with article data
 }
 
 // Daily log entries for discoveries, blockers, accomplishments
@@ -65,4 +82,109 @@ model LogEntry {
   @@map("log_entries")
   @@index([type])
   @@index([createdAt])
+  @@index([type, createdAt]) // Composite index for filtered log queries
+}
+
+// RSS Feed health tracking for resilient syncing
+model RssFeed {
+  id                  String   @id @default(cuid())
+  name                String   // "Hacker News", "Dev.to", etc.
+  url                 String   @unique
+  status              String   @default("active") // "active", "failing", "quarantined"
+  consecutiveFailures Int      @default(0)
+  lastSuccessAt       DateTime?
+  lastFailureAt       DateTime?
+  lastErrorMessage    String?
+  priority            Int      @default(50) // 0-100, higher = more important
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("rss_feeds")
+  @@index([status])
+}
+
+// Topic model for categorization and filtering
+model Topic {
+  id        String   @id @default(cuid())
+  name      String   @unique  // "AI", "Web Development", "Security"
+  slug      String   @unique  // "ai", "web-development", "security"
+  createdAt DateTime @default(now())
+
+  // Relations
+  articles  ArticleTopic[]
+
+  @@map("topics")
+  @@index([slug])
+}
+
+// Many-to-many relationship between Articles and Topics
+model ArticleTopic {
+  id         String   @id @default(cuid())
+  articleId  String
+  topicId    String
+  relevance  Float    @default(1.0) // 0.0 - 1.0, how relevant the topic is to the article
+  createdAt  DateTime @default(now())
+
+  // Relations
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  topic      Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, topicId]) // Prevent duplicate topic assignments
+  @@map("article_topics")
+  @@index([articleId])
+  @@index([topicId])
+  @@index([topicId, relevance]) // For finding top articles per topic
+  @@index([articleId, relevance]) // Covering index for article topics ordered by relevance
+  @@index([articleId, topicId, relevance]) // Covering index for full article-topic queries
+}
+
+// Saved articles for "Read Later" queue
+model SavedArticle {
+  id         String   @id @default(cuid())
+  articleId  String   @unique // One article can only be saved once
+  priority   Int      @default(3) // 1-5, where 5 is highest priority
+  isRead     Boolean  @default(false) // Mark as read/unread
+  notes      String?  // Optional user notes about the article
+  savedAt    DateTime @default(now())
+  readAt     DateTime? // When article was marked as read
+
+  // Relations
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("saved_articles")
+  @@index([articleId])
+  @@index([priority, savedAt]) // For priority-based sorting
+  @@index([isRead])
+  @@index([isRead, priority, savedAt]) // Composite index for read later queue queries
+}
+
+// User settings for personalization preferences
+model UserSettings {
+  id              String   @id @default(cuid())
+  diversityLevel  String   @default("medium") // "low", "medium", "high"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("user_settings")
+}
+
+// Thought capture for quick ideas and insights
+model Thought {
+  id             String   @id @default(cuid())
+  text           String   // The actual thought/idea content
+  category       String?  // Optional category tag (e.g., "App Ideas", "Random", "Research")
+  categoryFields Json?    // Optional category-specific fields (e.g., URL, timestamp for Video Insights)
+  articleId      String?  // Optional reference to article that inspired the thought
+  userId         String   @default("default-user") // For future multi-user support
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  article   Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
+
+  @@map("thoughts")
+  @@index([createdAt]) // For chronological sorting
+  @@index([category]) // For filtering by category
+  @@index([articleId]) // For finding thoughts related to an article
+  @@index([category, createdAt]) // Composite index for category-filtered queries
 }

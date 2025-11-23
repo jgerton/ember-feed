@@ -18,7 +18,17 @@
       "Bash(docker-compose up:*)",
       "Bash(gh issue list:*)",
       "Bash(curl:*)",
-      "Bash(docker-compose logs:*)"
+      "Bash(docker-compose logs:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(gh issue view:*)",
+      "Bash(mkdir:*)",
+      "Bash(docker-compose exec:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(time curl:*)",
+      "Bash(/dev/null)",
+      "Bash(docker rm:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []
