@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0",
     "workers": "tsx workers/index.ts",
     "db:init": "node -e \"require('./lib/db').default()\"",
     "test": "playwright test",
