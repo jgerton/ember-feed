@@ -104,6 +104,7 @@ jobs:
           context: .
           file: Dockerfile.prod
           push: false
+          load: true
           tags: ember-feed:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
