@@ -55,7 +55,7 @@ export default function NewsWidget({ compact = false, limit = 10, onViewAll, art
       const res = await fetch('/api/saved-articles')
       if (!res.ok) return
       const saved = await res.json()
-      const savedIds = new Set(saved.map((s: any) => s.articleId))
+      const savedIds = new Set<string>(saved.map((s: { articleId: string }) => s.articleId))
       setSavedArticles(savedIds)
     } catch (error) {
       console.error('Error fetching saved articles:', error)

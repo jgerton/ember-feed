@@ -84,7 +84,7 @@ export async function GET(request: Request) {
     }, {} as Record<string, number>)
 
     const categoryData = Object.entries(categoryBreakdown)
-      .map(([source, count]) => ({ source, count }))
+      .map(([source, count]) => ({ source, count: count as number }))
       .sort((a, b) => b.count - a.count)
 
     // 3. Reading streak
