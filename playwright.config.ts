@@ -21,11 +21,13 @@ export default defineConfig({
     },
   ],
 
-  // Run local dev server before starting tests
-  webServer: {
-    command: 'docker-compose up',
-    url: 'http://localhost:3002',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-  },
+  // Run local dev server before starting tests (skip in CI for now)
+  ...(!process.env.CI && {
+    webServer: {
+      command: 'docker-compose up',
+      url: 'http://localhost:3002',
+      reuseExistingServer: true,
+      timeout: 120000,
+    },
+  }),
 })
