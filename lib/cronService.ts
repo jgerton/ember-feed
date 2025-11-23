@@ -1,7 +1,7 @@
-import cron from 'node-cron'
+import cron, { ScheduledTask } from 'node-cron'
 import { syncArticlesToDatabase } from './feedService'
 
-let syncJob: cron.ScheduledTask | null = null
+let syncJob: ScheduledTask | null = null
 let isRunning = false
 let lastRun: Date | null = null
 let lastResult: { newCount: number; updatedCount: number; total: number } | null = null

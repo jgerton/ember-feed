@@ -93,3 +93,59 @@ export function extractTopicsWithThreshold(
   const topics = extractTopics(title, description)
   return topics.filter(topic => topic.relevance >= minRelevance)
 }
+
+// Extract topics and assign them to an article in the database
+export async function extractAndAssignTopics(articleId: string) {
+  const { prisma } = await import('./db')
+
+  // Get the article
+  const article = await prisma.article.findUnique({
+    where: { id: articleId },
+  })
+
+  if (!article) {
+    throw new Error(`Article not found: ${articleId}`)
+  }
+
+  // Extract topics from article
+  const topicMatches = extractTopicsWithThreshold(article.title, article.description || '', 0.3)
+
+  // Create or find topics and associate them with the article
+  const articleTopics = []
+  for (const match of topicMatches) {
+    // Upsert topic (create if doesn't exist)
+    const topic = await prisma.topic.upsert({
+      where: { slug: match.slug },
+      create: {
+        name: match.name,
+        slug: match.slug,
+      },
+      update: {},
+    })
+
+    // Create article-topic relationship
+    const articleTopic = await prisma.articleTopic.upsert({
+      where: {
+        articleId_topicId: {
+          articleId,
+          topicId: topic.id,
+        },
+      },
+      create: {
+        articleId,
+        topicId: topic.id,
+        relevance: match.relevance,
+      },
+      update: {
+        relevance: match.relevance,
+      },
+      include: {
+        topic: true,
+      },
+    })
+
+    articleTopics.push(articleTopic)
+  }
+
+  return articleTopics
+}

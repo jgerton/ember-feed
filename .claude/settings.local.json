@@ -28,7 +28,11 @@
       "Bash(time curl:*)",
       "Bash(/dev/null)",
       "Bash(docker rm:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run lint)",
+      "Bash(gh run view:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx prisma generate:*)"
     ],
     "deny": [],
     "ask": []

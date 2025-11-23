@@ -1,5 +1,5 @@
 // Personal recommendation algorithm
-import getDb from './db';
+import getDb from './db/index';
 
 export interface Article {
   id: number;
