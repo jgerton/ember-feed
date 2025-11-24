@@ -32,7 +32,15 @@
       "Bash(npm run lint)",
       "Bash(gh run view:*)",
       "Bash(npm run build:*)",
-      "Bash(npx prisma generate:*)"
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma:*)",
+      "Bash(aggregator-service/app/fetchers/__init__.py)",
+      "Bash(aggregator-service/app/analyzers/__init__.py)",
+      "Bash(aggregator-service/app/api/__init__.py)",
+      "SlashCommand(/test-coverage)",
+      "Bash(python -m pytest:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
