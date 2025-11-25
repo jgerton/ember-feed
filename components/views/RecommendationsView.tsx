@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import NewsWidget from '@/components/NewsWidget'
+import Pagination from '@/components/Pagination'
 
 interface Article {
   id: string
@@ -37,16 +38,19 @@ interface Article {
 export default function RecommendationsView() {
   const [recommendations, setRecommendations] = useState<Article[]>([])
   const [loading, setLoading] = useState(true)
-  const [limit, setLimit] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const limit = 10
 
   useEffect(() => {
     fetchRecommendations()
-  }, [limit])
+  }, [currentPage])
 
   const fetchRecommendations = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/recommendations?limit=${limit}`)
+      const res = await fetch(`/api/recommendations?limit=${limit}&page=${currentPage}`)
       if (!res.ok) throw new Error('Failed to fetch recommendations')
       const data = await res.json()
 
@@ -57,11 +61,20 @@ export default function RecommendationsView() {
       }))
 
       setRecommendations(articles)
+      if (data.pagination) {
+        setTotalPages(data.pagination.totalPages || 1)
+        setTotal(data.pagination.total || 0)
+      }
     } catch (error) {
       console.error('Error fetching recommendations:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   if (loading) {
@@ -85,40 +98,29 @@ export default function RecommendationsView() {
 
   return (
     <div>
-      {/* Controls */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="text-neutral-300">
-          <span className="font-semibold text-ember-400">{recommendations.length}</span> personalized recommendations
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setLimit(10)}
-            className={`px-3 py-1 rounded-lg text-sm transition-all ${
-              limit === 10
-                ? 'bg-ember-500 text-neutral-50'
-                : 'bg-neutral-800/30 text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            Top 10
-          </button>
-          <button
-            onClick={() => setLimit(20)}
-            className={`px-3 py-1 rounded-lg text-sm transition-all ${
-              limit === 20
-                ? 'bg-ember-500 text-neutral-50'
-                : 'bg-neutral-800/30 text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            Top 20
-          </button>
+          <span className="font-semibold text-ember-400">{total}</span> personalized recommendations
         </div>
       </div>
 
-      {/* Use NewsWidget for consistent styling */}
+      {/* Use NewsWidget for consistent styling (disable its pagination since we handle it) */}
       <NewsWidget
         articles={recommendations}
         compact={false}
+        showPagination={false}
       />
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          disabled={loading}
+        />
+      )}
     </div>
   )
 }

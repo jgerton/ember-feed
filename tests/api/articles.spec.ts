@@ -197,13 +197,14 @@ test.describe('Articles API', () => {
   test('pagination structure is correct', async ({ request }) => {
     const { data } = await apiGet(request, '/articles', { limit: '5' })
 
-    // Verify pagination structure
+    // Verify pagination structure (page-based by default)
     expect(data.pagination).toBeTruthy()
     expect(typeof data.pagination.hasMore).toBe('boolean')
     expect(typeof data.pagination.count).toBe('number')
-    if (data.pagination.hasMore) {
-      expect(data.pagination.nextCursor).toBeTruthy()
-    }
+    expect(typeof data.pagination.total).toBe('number')
+    expect(typeof data.pagination.totalPages).toBe('number')
+    expect(typeof data.pagination.page).toBe('number')
+    expect(typeof data.pagination.limit).toBe('number')
   })
 
   test('articles are ordered by score desc by default', async ({ request }) => {

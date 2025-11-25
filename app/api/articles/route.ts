@@ -7,7 +7,7 @@ import { createCachedResponse } from '@/lib/cacheHeaders'
 export const runtime = 'nodejs'
 
 // GET /api/articles - List articles sorted by score (optionally personalized, filterable by topic)
-// Supports cursor-based pagination for efficient handling of large datasets
+// Supports both cursor-based and offset-based pagination
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -15,13 +15,7 @@ export async function GET(request: Request) {
     const personalized = searchParams.get('personalized') === 'true'
     const topicSlug = searchParams.get('topic') // Filter by topic slug
     const cursor = searchParams.get('cursor') // Cursor for pagination
-
-    // If personalized ranking requested, use ML-based feed
-    if (personalized) {
-      const articles = await getPersonalizedFeed(limit, topicSlug)
-      // Personalized feeds change frequently, use dynamic caching (1 min)
-      return createCachedResponse(request, articles, 'dynamic')
-    }
+    const page = parseInt(searchParams.get('page') || '1') // Page number for offset-based pagination
 
     // Build where clause for topic filtering
     const whereClause = topicSlug ? {
@@ -34,52 +28,109 @@ export async function GET(request: Request) {
       }
     } : {}
 
-    // Cursor-based pagination for non-personalized feeds
-    const articles = await prisma.article.findMany({
-      where: whereClause,
-      orderBy: [
-        { score: 'desc' },
-        { publishedAt: 'desc' },
-        { id: 'asc' } // Stable sort with ID as tiebreaker
-      ],
-      take: limit + 1, // Fetch one extra to check if there are more results
-      ...(cursor && {
-        cursor: { id: cursor },
-        skip: 1 // Skip the cursor itself
-      }),
-      include: {
-        topics: {
-          include: {
-            topic: {
-              select: {
-                name: true,
-                slug: true
-              }
-            }
-          },
-          orderBy: {
-            relevance: 'desc'
-          }
-        }
-      }
-    })
-
-    // Check if there are more results
-    const hasMore = articles.length > limit
-    const results = hasMore ? articles.slice(0, limit) : articles
-    const nextCursor = hasMore ? results[results.length - 1].id : null
-
-    const response = {
-      articles: results,
-      pagination: {
-        hasMore,
-        nextCursor,
-        count: results.length
-      }
+    // If personalized ranking requested, use ML-based feed
+    if (personalized) {
+      const articles = await getPersonalizedFeed(limit, topicSlug)
+      // Personalized feeds change frequently, use dynamic caching (1 min)
+      return createCachedResponse(request, articles, 'dynamic')
     }
 
-    // Non-personalized feeds change less frequently, use semi-static caching (5 min)
-    return createCachedResponse(request, response, 'semiStatic')
+    // Get total count for offset-based pagination
+    const total = await prisma.article.count({ where: whereClause })
+    const totalPages = Math.ceil(total / limit)
+
+    // Determine pagination method
+    if (cursor) {
+      // Cursor-based pagination for infinite scroll
+      const articles = await prisma.article.findMany({
+        where: whereClause,
+        orderBy: [
+          { score: 'desc' },
+          { publishedAt: 'desc' },
+          { id: 'asc' } // Stable sort with ID as tiebreaker
+        ],
+        take: limit + 1, // Fetch one extra to check if there are more results
+        cursor: { id: cursor },
+        skip: 1, // Skip the cursor itself
+        include: {
+          topics: {
+            include: {
+              topic: {
+                select: {
+                  name: true,
+                  slug: true
+                }
+              }
+            },
+            orderBy: {
+              relevance: 'desc'
+            }
+          }
+        }
+      })
+
+      // Check if there are more results
+      const hasMore = articles.length > limit
+      const results = hasMore ? articles.slice(0, limit) : articles
+      const nextCursor = hasMore ? results[results.length - 1].id : null
+
+      const response = {
+        articles: results,
+        pagination: {
+          hasMore,
+          nextCursor,
+          count: results.length,
+          total,
+          totalPages
+        }
+      }
+
+      return createCachedResponse(request, response, 'semiStatic')
+    } else {
+      // Offset-based pagination for page navigation
+      const skip = (page - 1) * limit
+
+      const articles = await prisma.article.findMany({
+        where: whereClause,
+        orderBy: [
+          { score: 'desc' },
+          { publishedAt: 'desc' },
+          { id: 'asc' } // Stable sort with ID as tiebreaker
+        ],
+        take: limit,
+        skip,
+        include: {
+          topics: {
+            include: {
+              topic: {
+                select: {
+                  name: true,
+                  slug: true
+                }
+              }
+            },
+            orderBy: {
+              relevance: 'desc'
+            }
+          }
+        }
+      })
+
+      const response = {
+        articles,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasMore: page < totalPages,
+          count: articles.length
+        }
+      }
+
+      // Non-personalized feeds change less frequently, use semi-static caching (5 min)
+      return createCachedResponse(request, response, 'semiStatic')
+    }
   } catch (error) {
     console.error('Error fetching articles:', error)
     return NextResponse.json(
