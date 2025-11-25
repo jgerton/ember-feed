@@ -1,6 +1,6 @@
 'use client'
 
-export type CollectionView = 'journal' | 'recommendations' | 'read-later' | 'topics' | 'thoughts' | 'analytics' | 'admin' | 'news' | 'digest' | 'search'
+export type CollectionView = 'journal' | 'recommendations' | 'read-later' | 'topics' | 'thoughts' | 'analytics' | 'admin' | 'news' | 'digest' | 'search' | 'trending'
 
 interface CollectionsLinksProps {
   onNavigate: (view: CollectionView) => void
@@ -26,8 +26,9 @@ export default function CollectionsLinks({ onNavigate, activeView }: Collections
     { name: 'Read Later', view: 'read-later' as CollectionView, icon: '📚' },
     { name: 'Thoughts', view: 'thoughts' as CollectionView, icon: '💭' },
     { name: 'By Topic', view: 'topics' as CollectionView, icon: '🏷️' },
+    { name: 'Trending', view: 'trending' as CollectionView, icon: '🔥' },
     { name: 'All News', view: 'news' as CollectionView, icon: '📰' },
-    { name: 'Analytics', view: 'analytics' as CollectionView, icon: '📈' },
+    { name: 'Analytics', view: 'analytics' as CollectionView, icon: '📊' },
     { name: 'Feed Admin', view: 'admin' as CollectionView, icon: '⚙️' },
   ]
 
