@@ -9,10 +9,12 @@ test.describe('Recommendations API', () => {
     expect(status).toBe(200)
     expect(data).toBeTruthy()
 
-    // Verify response structure
-    assertResponseShape(data, ['recommendations', 'count'])
+    // Verify response structure (recommendations + pagination or message for empty)
+    assertResponseShape(data, ['recommendations'])
     expect(Array.isArray(data.recommendations)).toBe(true)
-    expect(typeof data.count).toBe('number')
+    if (data.pagination) {
+      expect(typeof data.pagination.count).toBe('number')
+    }
   })
 
   test('returns default limit of 10 recommendations', async ({ request }) => {
@@ -20,7 +22,7 @@ test.describe('Recommendations API', () => {
 
     if (data.recommendations.length > 0) {
       expect(data.recommendations.length).toBeLessThanOrEqual(10)
-      expect(data.count).toBe(data.recommendations.length)
+      expect(data.pagination.count).toBe(data.recommendations.length)
     }
   })
 

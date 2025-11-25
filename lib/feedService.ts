@@ -26,7 +26,7 @@ interface FeedItem {
 
 export async function fetchAllFeeds(): Promise<FeedItem[]> {
   // Initialize default feeds if database is empty
-  const feedCount = await prisma.rssFeed.count()
+  const feedCount = await prisma.feed.count()
   if (feedCount === 0) {
     await initializeDefaultFeeds()
   }

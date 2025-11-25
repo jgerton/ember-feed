@@ -12,6 +12,7 @@ import structlog
 from typing import List, Dict, Set
 from collections import Counter
 import re
+import html
 
 logger = structlog.get_logger()
 
@@ -54,8 +55,8 @@ class KeywordExtractor:
             List of keyword phrases
         """
         # Combine title and text for better keyword extraction
-        title = article.get("title", "")
-        text = article.get("text", "")
+        title = article.get("title") or ""
+        text = article.get("text") or ""
 
         # Title is more important, so we include it twice
         content = f"{title} {title} {text}"
@@ -199,8 +200,8 @@ class KeywordExtractor:
         keyword_lower = keyword.lower()
 
         for article in articles:
-            title = article.get("title", "").lower()
-            text = article.get("text", "").lower()
+            title = (article.get("title") or "").lower()
+            text = (article.get("text") or "").lower()
 
             if keyword_lower in title or keyword_lower in text:
                 matching_articles.append({
@@ -228,8 +229,17 @@ class KeywordExtractor:
         # Remove HTML tags
         text = re.sub(r'<[^>]+>', '', text)
 
+        # Decode HTML entities (&nbsp;, &raquo;, &amp;, etc.)
+        text = html.unescape(text)
+
         # Remove URLs
         text = re.sub(r'http[s]?://\S+', '', text)
+
+        # Remove common garbage characters from RSS feeds
+        text = re.sub(r'[»«•·|→←↑↓]', ' ', text)
+
+        # Remove non-printable and control characters
+        text = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', text)
 
         # Remove multiple spaces
         text = re.sub(r'\s+', ' ', text)

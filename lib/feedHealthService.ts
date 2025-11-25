@@ -36,23 +36,29 @@ export async function initializeDefaultFeeds() {
     { name: 'Dev.to', url: 'https://dev.to/feed', priority: 80 }
   ]
 
-  for (const feed of defaultFeeds) {
-    await prisma.rssFeed.upsert({
-      where: { url: feed.url },
+  for (const feedData of defaultFeeds) {
+    await prisma.feed.upsert({
+      where: { url: feedData.url },
       update: {},
-      create: feed
+      create: {
+        ...feedData,
+        type: 'rss',
+        category: 'tech',
+        enabled: true
+      }
     })
   }
 
-  return await prisma.rssFeed.findMany()
+  return await prisma.feed.findMany()
 }
 
 /**
  * Get feeds that should be synced (not quarantined or on backoff)
  */
 export async function getActiveFeedsForSync() {
-  const feeds = await prisma.rssFeed.findMany({
+  const feeds = await prisma.feed.findMany({
     where: {
+      enabled: true,
       OR: [
         { status: 'active' },
         { status: 'failing' }
@@ -111,7 +117,7 @@ export async function testFeedUrl(url: string): Promise<Omit<FeedHealthResult, '
  * Test a single feed (for manual testing/restore)
  */
 export async function testFeed(feedId: string): Promise<FeedHealthResult> {
-  const feed = await prisma.rssFeed.findUnique({ where: { id: feedId } })
+  const feed = await prisma.feed.findUnique({ where: { id: feedId } })
   if (!feed) {
     throw new Error(`Feed ${feedId} not found`)
   }
@@ -143,7 +149,7 @@ export async function testFeed(feedId: string): Promise<FeedHealthResult> {
  * Record successful feed sync
  */
 export async function recordFeedSuccess(feedId: string, articlesCount: number) {
-  await prisma.rssFeed.update({
+  await prisma.feed.update({
     where: { id: feedId },
     data: {
       status: 'active',
@@ -160,7 +166,7 @@ export async function recordFeedSuccess(feedId: string, articlesCount: number) {
  * Record feed failure with graceful degradation
  */
 export async function recordFeedFailure(feedId: string, error: string) {
-  const feed = await prisma.rssFeed.findUnique({ where: { id: feedId } })
+  const feed = await prisma.feed.findUnique({ where: { id: feedId } })
   if (!feed) return
 
   const newFailureCount = feed.consecutiveFailures + 1
@@ -177,7 +183,7 @@ export async function recordFeedFailure(feedId: string, error: string) {
     console.warn(`⚠️  Feed temporary failure: ${feed.name} (${newFailureCount} failures)`)
   }
 
-  await prisma.rssFeed.update({
+  await prisma.feed.update({
     where: { id: feedId },
     data: {
       status: newStatus,
@@ -196,7 +202,7 @@ export async function restoreFeed(feedId: string) {
   const testResult = await testFeed(feedId)
 
   if (testResult.success) {
-    await prisma.rssFeed.update({
+    await prisma.feed.update({
       where: { id: feedId },
       data: {
         status: 'active',
@@ -216,7 +222,7 @@ export async function restoreFeed(feedId: string) {
  * Get feed health summary
  */
 export async function getFeedHealthSummary() {
-  const feeds = await prisma.rssFeed.findMany({
+  const feeds = await prisma.feed.findMany({
     orderBy: { priority: 'desc' }
   })
 
@@ -245,7 +251,7 @@ export async function getFeedHealthSummary() {
  * Get quarantined feeds (for admin UI)
  */
 export async function getQuarantinedFeeds() {
-  return await prisma.rssFeed.findMany({
+  return await prisma.feed.findMany({
     where: { status: 'quarantined' },
     orderBy: { lastFailureAt: 'desc' }
   })

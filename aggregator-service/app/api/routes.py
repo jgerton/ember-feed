@@ -16,7 +16,7 @@ import structlog
 from datetime import datetime, timedelta
 
 # Import our analyzers and fetchers
-from app.fetchers import hackernews, reddit, rss
+from app.fetchers import hackernews, reddit, rss, newsapi
 from app.analyzers import (
     keyword_extractor,
     deduplicator,
@@ -25,6 +25,7 @@ from app.analyzers import (
     historical_snapshot
 )
 from app.config import settings
+from app import database
 
 logger = structlog.get_logger()
 
@@ -115,29 +116,20 @@ async def get_hot_topics(
         )
 
     try:
-        # TODO: Query HotTopic table from database
-        # For now, return mock data
+        # Query hot topics from database
+        topics = await database.get_hot_topics(timeframe=timeframe, limit=limit)
+
+        if not topics:
+            # No data yet - return empty with helpful message
+            return {
+                "timeframe": timeframe,
+                "topics": [],
+                "message": "No trending data yet. Trigger a fetch with POST /api/fetch first."
+            }
+
         return {
             "timeframe": timeframe,
-            "topics": [
-                {
-                    "rank": 1,
-                    "keyword": "GPT-5",
-                    "score": 94.5,
-                    "mentions": 47,
-                    "sources": ["HackerNews", "Reddit", "Medium"],
-                    "summary": "OpenAI announces GPT-5 with major improvements in reasoning...",
-                    "sample_articles": [
-                        {
-                            "title": "OpenAI announces GPT-5",
-                            "url": "https://example.com/gpt5",
-                            "source": "HackerNews"
-                        }
-                    ],
-                    "fetched_at": datetime.now().isoformat()
-                }
-            ],
-            "note": "Database integration pending"
+            "topics": topics
         }
 
     except Exception as e:
@@ -167,31 +159,20 @@ async def get_trending_up_topics(
         )
 
     try:
-        # TODO: Query TrendingUpTopic table from database
-        # For now, return mock data
+        # Query trending up topics from database
+        topics = await database.get_trending_up_topics(timeframe=timeframe, limit=limit)
+
+        if not topics:
+            # No data yet - need historical data for velocity calculation
+            return {
+                "timeframe": timeframe,
+                "topics": [],
+                "message": "Trending Up requires historical data. Run daily fetches for 1-2 weeks to build history."
+            }
+
         return {
             "timeframe": timeframe,
-            "topics": [
-                {
-                    "rank": 1,
-                    "keyword": "Rust async",
-                    "velocity": 12.5,
-                    "current_volume": 150,
-                    "previous_volume": 12,
-                    "percent_growth": 1150.0,
-                    "summary": "Rapid adoption of async Rust in production systems...",
-                    "sources": ["Reddit", "Medium", "HackerNews"],
-                    "sample_articles": [
-                        {
-                            "title": "Why we switched to async Rust",
-                            "url": "https://example.com/async-rust",
-                            "source": "Medium"
-                        }
-                    ],
-                    "fetched_at": datetime.now().isoformat()
-                }
-            ],
-            "note": "Requires 1-2 weeks of historical data. Database integration pending."
+            "topics": topics
         }
 
     except Exception as e:
@@ -200,41 +181,67 @@ async def get_trending_up_topics(
 
 
 @router.get("/feeds")
-async def list_feeds(category: Optional[str] = None):
+async def list_feeds(category: Optional[str] = None, feed_type: Optional[str] = None):
     """
-    List available feed sources
+    List available feed sources from database
 
     Args:
         category: Filter by category (tech, business, science, etc.)
+        feed_type: Filter by type (rss, reddit, hackernews, api)
 
     Returns:
         List of available feeds with metadata
     """
     try:
-        # TODO: Query FeedSource table from database
-        # For now, return curated list
-        feeds = [
+        # Get enabled feeds from database
+        db_feeds = await database.get_enabled_feeds(
+            feed_type=feed_type,
+            category=category
+        )
+
+        # Also include built-in sources that aren't in the database
+        builtin_feeds = [
             {
                 "id": "hn",
                 "name": "Hacker News",
-                "type": "api",
+                "type": "hackernews",
                 "category": "tech",
-                "enabled": True
+                "priority": 90,
+                "builtin": True
             },
             {
                 "id": "reddit-tech",
                 "name": "Reddit - r/technology",
                 "type": "reddit",
                 "category": "tech",
-                "enabled": True
+                "priority": 85,
+                "builtin": True
             },
-            # Add more...
+            {
+                "id": "google-news",
+                "name": "Google News",
+                "type": "rss",
+                "category": "general",
+                "priority": 80,
+                "builtin": True
+            },
         ]
 
+        # Apply category filter to built-in feeds
         if category:
-            feeds = [f for f in feeds if f["category"] == category]
+            builtin_feeds = [f for f in builtin_feeds if f["category"] == category]
+        if feed_type:
+            builtin_feeds = [f for f in builtin_feeds if f["type"] == feed_type]
 
-        return {"feeds": feeds, "total": len(feeds)}
+        # Combine database feeds with built-in
+        all_feeds = db_feeds + builtin_feeds
+
+        return {
+            "feeds": all_feeds,
+            "total": len(all_feeds),
+            "user_feeds": len(db_feeds),
+            "builtin_feeds": len(builtin_feeds)
+        }
 
     except Exception as e:
         logger.error("list_feeds_failed", error=str(e))
@@ -290,6 +297,24 @@ async def fetch_and_process_content(job_id: str, sources: Optional[List[str]] = 
             all_articles.extend(tech_news)
             logger.info("fetched_rss", count=len(google_news + substack + medium + tech_news))
 
+            # User-configured feeds from database (added via ThoughtCapture or subscriptions)
+            user_feeds = await rss.fetch_user_feeds(limit_per_feed=10)
+            all_articles.extend(user_feeds)
+            logger.info("fetched_user_feeds", count=len(user_feeds))
+
+        # NewsAPI
+        if not sources or "newsapi" in sources:
+            if settings.news_api_key:
+                newsapi_articles = await newsapi.fetch_trending_news(
+                    api_key=settings.news_api_key,
+                    categories=["technology", "science", "business"],
+                    limit_per_category=20
+                )
+                all_articles.extend(newsapi_articles)
+                logger.info("fetched_newsapi", count=len(newsapi_articles))
+            else:
+                logger.info("newsapi_skipped", reason="No API key configured")
+
         # Step 2: Deduplicate
         unique_articles = deduplicator.deduplicate(all_articles)
         logger.info("deduplication_complete", unique=len(unique_articles), original=len(all_articles))
@@ -310,21 +335,74 @@ async def fetch_and_process_content(job_id: str, sources: Optional[List[str]] = 
         logger.info("hot_scores_calculated", count=len(hot_articles))
 
         # Step 5: Store Hot Now topics in database
-        # TODO: Implement database storage
-        # For each timeframe (24hr, 3day, 7day):
-        #   - Filter articles by timeframe
-        #   - Extract top 5 keywords
-        #   - Store in HotTopic table
+        fetched_at = datetime.now()
 
-        # Step 6: Create historical snapshot
-        # TODO: Implement snapshot storage
-        # snapshot_data = historical_snapshot.prepare_snapshot_data(keywords)
-        # await snapshot_service.create_snapshot(snapshot_data)
+        # Build hot topics from keywords
+        hot_topics = []
+        for kw_data in keywords[:10]:  # Top 10 keywords
+            # Extract unique sources from sample articles
+            sources = list(set(
+                art.get("source", "Unknown")
+                for art in kw_data.get("sample_articles", [])
+            ))
+
+            hot_topics.append({
+                "keyword": kw_data.get("keyword", ""),
+                "score": float(kw_data.get("frequency", 0) * 10),  # Scale frequency to score
+                "mentions": kw_data.get("frequency", 0),
+                "summary": f"Trending topic with {kw_data.get('frequency', 0)} mentions across sources",
+                "sources": sources if sources else ["Unknown"],
+                "sample_articles": kw_data.get("sample_articles", [])[:3]
+            })
+
+        # Store for each timeframe (for now all get same data - can filter by date later)
+        for timeframe in ["24hr", "3day", "7day"]:
+            await database.store_hot_topics(
+                topics=hot_topics[:5],  # Top 5 per timeframe
+                timeframe=timeframe,
+                fetched_at=fetched_at
+            )
+        logger.info("hot_topics_stored", count=len(hot_topics))
+
+        # Step 6: Create historical snapshot for velocity calculation
+        keyword_history = [
+            {
+                "keyword": kw.get("keyword", ""),
+                "mentions": kw.get("frequency", 0),
+                "sources": list(set(
+                    art.get("source", "Unknown")
+                    for art in kw.get("sample_articles", [])
+                ))
+            }
+            for kw in keywords
+        ]
+        await database.store_keyword_history(keyword_history, date=fetched_at)
+        logger.info("keyword_history_stored", count=len(keyword_history))
 
         # Step 7: Calculate Trending Up (if enough historical data)
-        # TODO: Implement trending up calculation
-        # historical_data = await snapshot_service.get_all_keywords_history(days=30)
-        # trending_up = velocity_calculator.calculate_trending_up(...)
+        history = await database.get_all_keywords_history(days=14)
+        if history and len(history) > 0:
+            # Convert keywords list to dict format {keyword: frequency}
+            current_keywords_dict = {
+                kw.get("keyword", ""): kw.get("frequency", 0)
+                for kw in keywords
+            }
+
+            trending_up_topics = velocity_calculator.calculate_trending_up(
+                current_keywords=current_keywords_dict,
+                historical_data=history,
+                top_n=5,
+                min_growth=50
+            )
+
+            if trending_up_topics:
+                for timeframe in ["7day", "14day", "30day"]:
+                    await database.store_trending_up_topics(
+                        topics=trending_up_topics,
+                        timeframe=timeframe,
+                        fetched_at=fetched_at
+                    )
+                logger.info("trending_up_topics_stored", count=len(trending_up_topics))
 
         # Update job status
         fetch_jobs[job_id] = {
@@ -334,7 +412,9 @@ async def fetch_and_process_content(job_id: str, sources: Optional[List[str]] = 
             "results": {
                 "articles_fetched": len(all_articles),
                 "articles_unique": len(unique_articles),
-                "keywords_extracted": len(keywords)
+                "keywords_extracted": len(keywords),
+                "hot_topics_stored": len(hot_topics[:5]) * 3,  # 3 timeframes
+                "keyword_history_stored": len(keyword_history)
             }
         }
 

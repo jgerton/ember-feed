@@ -6,6 +6,7 @@ interface Topic {
   topic: string
   count: number
   trend: 'up' | 'down' | 'stable'
+  sources?: string[]
 }
 
 interface TrendingTopicsProps {
@@ -15,7 +16,7 @@ interface TrendingTopicsProps {
 /**
  * Trending Topics Widget
  *
- * Displays trending topics extracted from recent articles
+ * Displays trending topics from the aggregator service
  * with trend indicators and article counts.
  */
 export default function TrendingTopics({ onTopicClick }: TrendingTopicsProps = {}) {
@@ -26,18 +27,22 @@ export default function TrendingTopics({ onTopicClick }: TrendingTopicsProps = {
   useEffect(() => {
     async function fetchTopics() {
       try {
-        const response = await fetch('/api/topics?limit=6')
+        // Fetch from the trending aggregator API
+        const response = await fetch('/api/trending/hot?timeframe=24hr&limit=6')
         if (response.ok) {
           const data = await response.json()
-          // Add trend indicators (placeholder logic for now)
-          const topicsWithTrend = data.topics.map((topic: any, index: number) => ({
-            ...topic,
-            trend: index % 3 === 0 ? 'up' : index % 3 === 1 ? 'stable' : 'down'
+          // Transform API response to component format
+          const topicsWithTrend = (data.topics || []).map((topic: any, index: number) => ({
+            topic: topic.keyword,
+            count: topic.mentions || 0,
+            sources: topic.sources || [],
+            // Trend based on rank (top items trending up)
+            trend: index < 2 ? 'up' : index < 4 ? 'stable' : 'down'
           }))
           setTopics(topicsWithTrend)
         }
       } catch (error) {
-        console.error('Failed to fetch topics:', error)
+        console.error('Failed to fetch trending topics:', error)
       } finally {
         setLoading(false)
       }

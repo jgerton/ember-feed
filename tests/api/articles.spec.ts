@@ -9,9 +9,9 @@ test.describe('Articles API', () => {
     expect(status).toBe(200)
     expect(data).toBeTruthy()
 
-    assertResponseShape(data, ['articles', 'total'])
+    assertResponseShape(data, ['articles', 'pagination'])
     expect(Array.isArray(data.articles)).toBe(true)
-    expect(typeof data.total).toBe('number')
+    expect(typeof data.pagination.count).toBe('number')
   })
 
   test('returns default limit of 20 articles', async ({ request }) => {
@@ -61,11 +61,12 @@ test.describe('Articles API', () => {
     })
 
     expect(data).toBeTruthy()
-    expect(Array.isArray(data.articles)).toBe(true)
+    // Personalized feed returns array directly
+    expect(Array.isArray(data)).toBe(true)
 
     // Personalized feed should have articles (if any exist in DB)
-    if (data.articles.length > 0) {
-      expect(data.articles.length).toBeGreaterThan(0)
+    if (data.length > 0) {
+      expect(data.length).toBeGreaterThan(0)
     }
   })
 
@@ -75,8 +76,9 @@ test.describe('Articles API', () => {
       limit: '5'
     })
 
-    if (data.articles.length > 0) {
-      const article = data.articles[0]
+    // Personalized feed returns array directly
+    if (data.length > 0) {
+      const article = data[0]
 
       expect('topics' in article).toBe(true)
       expect(Array.isArray(article.topics)).toBe(true)
@@ -110,14 +112,14 @@ test.describe('Articles API', () => {
       limit: '10'
     })
 
-    // Both should return articles
-    expect(Array.isArray(highDiversity.articles)).toBe(true)
-    expect(Array.isArray(lowDiversity.articles)).toBe(true)
+    // Personalized feeds return arrays directly
+    expect(Array.isArray(highDiversity)).toBe(true)
+    expect(Array.isArray(lowDiversity)).toBe(true)
 
     // High diversity should have more balanced source distribution
-    if (highDiversity.articles.length >= 5 && lowDiversity.articles.length >= 5) {
-      const highSources = new Set(highDiversity.articles.map((a: any) => a.source))
-      const lowSources = new Set(lowDiversity.articles.map((a: any) => a.source))
+    if (highDiversity.length >= 5 && lowDiversity.length >= 5) {
+      const highSources = new Set(highDiversity.map((a: any) => a.source))
+      const lowSources = new Set(lowDiversity.map((a: any) => a.source))
 
       // High diversity should tend to have more unique sources
       // (This is probabilistic, so we just verify structure)
@@ -169,50 +171,60 @@ test.describe('Articles API', () => {
     }
   })
 
-  test('offset parameter skips articles', async ({ request }) => {
-    const { data: first } = await apiGet(request, '/articles', { limit: '5', offset: '0' })
-    const { data: second } = await apiGet(request, '/articles', { limit: '5', offset: '5' })
+  test('cursor pagination returns different articles', async ({ request }) => {
+    // First page
+    const { data: first } = await apiGet(request, '/articles', { limit: '5' })
 
-    if (first.articles.length > 0 && second.articles.length > 0) {
-      // First article of second batch should be different from first batch
-      const firstIds = new Set(first.articles.map((a: any) => a.id))
-      const secondIds = new Set(second.articles.map((a: any) => a.id))
+    if (first.articles.length > 0 && first.pagination.hasMore) {
+      // Second page using cursor
+      const { data: second } = await apiGet(request, '/articles', {
+        limit: '5',
+        cursor: first.pagination.nextCursor
+      })
 
-      // There should be no overlap
-      const overlap = [...firstIds].filter(id => secondIds.has(id))
-      expect(overlap.length).toBe(0)
-    }
-  })
+      if (second.articles.length > 0) {
+        // First article of second batch should be different from first batch
+        const firstIds = new Set(first.articles.map((a: any) => a.id))
+        const secondIds = new Set(second.articles.map((a: any) => a.id))
 
-  test('pagination works correctly', async ({ request }) => {
-    const limit = 5
-    const page1 = await apiGet(request, '/articles', { limit: String(limit), offset: '0' })
-    const page2 = await apiGet(request, '/articles', { limit: String(limit), offset: String(limit) })
-
-    if (page1.data.articles.length > 0 && page2.data.articles.length > 0) {
-      // Pages should have different articles
-      expect(page1.data.articles[0].id).not.toBe(page2.data.articles[0].id)
-    }
-  })
-
-  test('articles are ordered by publishedAt desc by default', async ({ request }) => {
-    const { data } = await apiGet(request, '/articles', { limit: '20' })
-
-    if (data.articles.length > 1) {
-      for (let i = 0; i < data.articles.length - 1; i++) {
-        const current = new Date(data.articles[i].publishedAt)
-        const next = new Date(data.articles[i + 1].publishedAt)
-
-        expect(current.getTime()).toBeGreaterThanOrEqual(next.getTime())
+        // There should be no overlap
+        const overlap = [...firstIds].filter(id => secondIds.has(id))
+        expect(overlap.length).toBe(0)
       }
     }
   })
 
-  test('total count matches database', async ({ request }) => {
+  test('pagination structure is correct', async ({ request }) => {
+    const { data } = await apiGet(request, '/articles', { limit: '5' })
+
+    // Verify pagination structure
+    expect(data.pagination).toBeTruthy()
+    expect(typeof data.pagination.hasMore).toBe('boolean')
+    expect(typeof data.pagination.count).toBe('number')
+    if (data.pagination.hasMore) {
+      expect(data.pagination.nextCursor).toBeTruthy()
+    }
+  })
+
+  test('articles are ordered by score desc by default', async ({ request }) => {
+    const { data } = await apiGet(request, '/articles', { limit: '20' })
+
+    if (data.articles.length > 1) {
+      for (let i = 0; i < data.articles.length - 1; i++) {
+        const current = data.articles[i].score
+        const next = data.articles[i + 1].score
+
+        // Primary sort is by score descending
+        expect(current).toBeGreaterThanOrEqual(next)
+      }
+    }
+  })
+
+  test('pagination count matches returned articles', async ({ request }) => {
     const { data } = await apiGet(request, '/articles')
 
-    expect(typeof data.total).toBe('number')
-    expect(data.total).toBeGreaterThanOrEqual(data.articles.length)
+    expect(typeof data.pagination.count).toBe('number')
+    expect(data.pagination.count).toBe(data.articles.length)
   })
 
   test('handles invalid limit gracefully', async ({ request }) => {
@@ -250,18 +262,19 @@ test.describe('Articles API', () => {
   })
 
   test('combines multiple filters correctly', async ({ request }) => {
-    const { data } = await apiGet(request, '/articles', {
+    const { data, ok } = await apiGet(request, '/articles', {
       personalized: 'true',
       limit: '10',
       search: 'web'
     })
 
     expect(ok).toBe(true)
-    expect(Array.isArray(data.articles)).toBe(true)
+    // Personalized feed returns array directly
+    expect(Array.isArray(data)).toBe(true)
 
     // If articles returned, they should match all filters
-    if (data.articles.length > 0) {
-      expect(data.articles[0]).toBeTruthy()
+    if (data.length > 0) {
+      expect(data[0]).toBeTruthy()
     }
   })
 
@@ -274,6 +287,7 @@ test.describe('Articles API', () => {
     expect(ok).toBe(true)
     expect(Array.isArray(data.articles)).toBe(true)
     expect(data.articles.length).toBe(0)
-    expect(data.total).toBeGreaterThanOrEqual(0)
+    // Check pagination instead of total
+    expect(data.pagination.count).toBe(0)
   })
 })

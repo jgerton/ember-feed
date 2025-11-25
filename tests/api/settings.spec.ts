@@ -73,7 +73,8 @@ test.describe('Settings API', () => {
 
     const data = await response.json()
     expect(data.error).toBeTruthy()
-    expect(data.error).toContain('Invalid diversity level')
+    // Error message includes valid options
+    expect(data.error).toContain('diversityLevel')
   })
 
   test('handles empty diversity level', async ({ request }) => {

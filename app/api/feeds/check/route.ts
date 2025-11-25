@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const normalizedUrl = url.trim().replace(/\/+$/, '')
 
     // Check if feed exists in database
-    const feed = await prisma.rssFeed.findFirst({
+    const feed = await prisma.feed.findFirst({
       where: {
         url: {
           equals: normalizedUrl

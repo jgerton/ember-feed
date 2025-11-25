@@ -1,7 +1,7 @@
 import { prisma } from '../lib/db'
 
 async function setQuarantine() {
-  const result = await prisma.rssFeed.update({
+  const result = await prisma.feed.update({
     where: { id: 'cmi98lrxa0000qd0ty08n29oq' },
     data: {
       status: 'quarantined',

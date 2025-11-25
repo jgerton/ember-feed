@@ -27,6 +27,7 @@ datasketch==1.6.5
 # Database
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
+aiosqlite==0.20.0
 
 # Caching
 redis==5.0.0

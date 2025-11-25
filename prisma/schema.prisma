@@ -85,22 +85,43 @@ model LogEntry {
   @@index([type, createdAt]) // Composite index for filtered log queries
 }
 
-// RSS Feed health tracking for resilient syncing
-model RssFeed {
+// Unified Feed model - combines RSS health tracking with source categorization
+// Used by both Next.js (article sync) and Python aggregator (trending topics)
+model Feed {
   id                  String   @id @default(cuid())
-  name                String   // "Hacker News", "Dev.to", etc.
+  name                String   // "Hacker News", "The Pragmatic Engineer", etc.
   url                 String   @unique
+
+  // Type & categorization (for Python aggregator)
+  type                String   @default("rss")  // "rss", "reddit", "hackernews", "substack", "medium", "api"
+  category            String   @default("tech") // "tech", "business", "science", "developer", "startup"
+
+  // Health monitoring (from RssFeed)
   status              String   @default("active") // "active", "failing", "quarantined"
   consecutiveFailures Int      @default(0)
   lastSuccessAt       DateTime?
   lastFailureAt       DateTime?
   lastErrorMessage    String?
-  priority            Int      @default(50) // 0-100, higher = more important
+
+  // Scheduling & control
+  priority            Int      @default(50)  // 0-100, higher = more important
+  updateFrequency     Int      @default(60)  // minutes between checks
+  enabled             Boolean  @default(true)
+  lastFetched         DateTime?
+
+  // Timestamps
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  @@map("rss_feeds")
+  // Relations
+  userSubscriptions   UserFeedSubscription[]
+
+  @@map("feeds")
   @@index([status])
+  @@index([enabled])
+  @@index([type])
+  @@index([category])
+  @@index([enabled, status]) // For active feed queries
 }
 
 // Topic model for categorization and filtering
@@ -189,43 +210,20 @@ model Thought {
   @@index([category, createdAt]) // Composite index for category-filtered queries
 }
 
-// Feed source configuration for trending topics aggregator
-model FeedSource {
-  id              String   @id @default(cuid())
-  name            String   // "Hacker News", "The Pragmatic Engineer", etc.
-  url             String   @unique
-  type            String   // "rss", "reddit", "hackernews", "substack", "medium", "api"
-  category        String   // "tech", "business", "science", "developer", "startup", etc.
-  updateFrequency Int      @default(60) // minutes between checks
-  lastFetched     DateTime?
-  enabled         Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  userSubscriptions UserFeedSubscription[]
-
-  @@map("feed_sources")
-  @@index([category])
-  @@index([enabled])
-  @@index([type])
-  @@index([enabled, updateFrequency]) // For scheduling fetches
-}
-
 // User feed subscriptions for personalized trending
 model UserFeedSubscription {
-  id           String   @id @default(cuid())
-  userId       String   @default("default-user") // For future multi-user support
-  feedSourceId String
-  createdAt    DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String   @default("default-user") // For future multi-user support
+  feedId    String
+  createdAt DateTime @default(now())
 
   // Relations
-  feedSource   FeedSource @relation(fields: [feedSourceId], references: [id], onDelete: Cascade)
+  feed      Feed @relation(fields: [feedId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, feedSourceId]) // One subscription per user per feed
+  @@unique([userId, feedId]) // One subscription per user per feed
   @@map("user_feed_subscriptions")
   @@index([userId])
-  @@index([feedSourceId])
+  @@index([feedId])
 }
 
 // Hot topics - what's popular RIGHT NOW

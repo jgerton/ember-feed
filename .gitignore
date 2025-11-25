@@ -50,3 +50,13 @@ dev.db
 # Playwright
 playwright-report/
 test-results/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+
+# Claude Code local settings
+.claude/settings.local.json

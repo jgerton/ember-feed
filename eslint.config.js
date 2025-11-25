@@ -72,6 +72,7 @@ export default [
       '*.config.js',
       '*.config.ts',
       'coverage/**',
+      'aggregator-service/**',
     ],
   },
 ]
