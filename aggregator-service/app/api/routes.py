@@ -16,7 +16,7 @@ import structlog
 from datetime import datetime, timedelta
 
 # Import our analyzers and fetchers
-from app.fetchers import hackernews, reddit, rss
+from app.fetchers import hackernews, reddit, rss, newsapi
 from app.analyzers import (
     keyword_extractor,
     deduplicator,
@@ -181,41 +181,67 @@ async def get_trending_up_topics(
 
 
 @router.get("/feeds")
-async def list_feeds(category: Optional[str] = None):
+async def list_feeds(category: Optional[str] = None, feed_type: Optional[str] = None):
     """
-    List available feed sources
+    List available feed sources from database
 
     Args:
         category: Filter by category (tech, business, science, etc.)
+        feed_type: Filter by type (rss, reddit, hackernews, api)
 
     Returns:
         List of available feeds with metadata
     """
     try:
-        # TODO: Query FeedSource table from database
-        # For now, return curated list
-        feeds = [
+        # Get enabled feeds from database
+        db_feeds = await database.get_enabled_feeds(
+            feed_type=feed_type,
+            category=category
+        )
+
+        # Also include built-in sources that aren't in the database
+        builtin_feeds = [
             {
                 "id": "hn",
                 "name": "Hacker News",
-                "type": "api",
+                "type": "hackernews",
                 "category": "tech",
-                "enabled": True
+                "priority": 90,
+                "builtin": True
             },
             {
                 "id": "reddit-tech",
                 "name": "Reddit - r/technology",
                 "type": "reddit",
                 "category": "tech",
-                "enabled": True
+                "priority": 85,
+                "builtin": True
             },
-            # Add more...
+            {
+                "id": "google-news",
+                "name": "Google News",
+                "type": "rss",
+                "category": "general",
+                "priority": 80,
+                "builtin": True
+            },
         ]
 
+        # Apply category filter to built-in feeds
         if category:
-            feeds = [f for f in feeds if f["category"] == category]
+            builtin_feeds = [f for f in builtin_feeds if f["category"] == category]
+        if feed_type:
+            builtin_feeds = [f for f in builtin_feeds if f["type"] == feed_type]
 
-        return {"feeds": feeds, "total": len(feeds)}
+        # Combine database feeds with built-in
+        all_feeds = db_feeds + builtin_feeds
+
+        return {
+            "feeds": all_feeds,
+            "total": len(all_feeds),
+            "user_feeds": len(db_feeds),
+            "builtin_feeds": len(builtin_feeds)
+        }
 
     except Exception as e:
         logger.error("list_feeds_failed", error=str(e))
@@ -270,6 +296,24 @@ async def fetch_and_process_content(job_id: str, sources: Optional[List[str]] = 
             all_articles.extend(medium)
             all_articles.extend(tech_news)
             logger.info("fetched_rss", count=len(google_news + substack + medium + tech_news))
+
+            # User-configured feeds from database (added via ThoughtCapture or subscriptions)
+            user_feeds = await rss.fetch_user_feeds(limit_per_feed=10)
+            all_articles.extend(user_feeds)
+            logger.info("fetched_user_feeds", count=len(user_feeds))
+
+        # NewsAPI
+        if not sources or "newsapi" in sources:
+            if settings.news_api_key:
+                newsapi_articles = await newsapi.fetch_trending_news(
+                    api_key=settings.news_api_key,
+                    categories=["technology", "science", "business"],
+                    limit_per_category=20
+                )
+                all_articles.extend(newsapi_articles)
+                logger.info("fetched_newsapi", count=len(newsapi_articles))
+            else:
+                logger.info("newsapi_skipped", reason="No API key configured")
 
         # Step 2: Deduplicate
         unique_articles = deduplicator.deduplicate(all_articles)

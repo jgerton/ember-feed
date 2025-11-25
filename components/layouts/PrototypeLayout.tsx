@@ -14,6 +14,7 @@ import AnalyticsDashboard from '@/components/AnalyticsDashboard'
 import RecommendationsView from '@/components/views/RecommendationsView'
 import ReadLaterView from '@/components/views/ReadLaterView'
 import ThoughtsView from '@/components/views/ThoughtsView'
+import TopicsView from '@/components/views/TopicsView'
 import DailySummaryBar from '@/components/DailySummaryBar'
 import QuickActions from '@/components/QuickActions'
 import TasksWidget from '@/components/TasksWidget'
@@ -33,6 +34,7 @@ export default function PrototypeLayout() {
   const [isNewsExpanded, setIsNewsExpanded] = useState(false)
   const [isThoughtModalOpen, setIsThoughtModalOpen] = useState(false)
   const [thoughtArticleContext, setThoughtArticleContext] = useState<{id: string, title: string} | undefined>()
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
 
   const renderMainContent = () => {
     switch (mainContent) {
@@ -75,9 +77,10 @@ export default function PrototypeLayout() {
         return (
           <div className="glass-medium rounded-2xl p-6 h-full">
             <h2 className="text-2xl font-bold text-neutral-50 mb-6">Browse by Topic</h2>
-            <div className="text-center py-12">
-              <p className="text-neutral-400">Topic browsing coming soon...</p>
-            </div>
+            <TopicsView
+              selectedTopic={selectedTopic}
+              onTopicChange={setSelectedTopic}
+            />
           </div>
         )
       case 'search':
@@ -189,8 +192,9 @@ export default function PrototypeLayout() {
           {/* Trending Topics */}
           <TrendingTopics
             onTopicClick={(topic) => {
-              console.log('Clicked topic:', topic)
-              setMainContent('topics') // Navigate to topics view
+              // Set the selected topic (null for 'all')
+              setSelectedTopic(topic === 'all' ? null : topic)
+              setMainContent('topics')
             }}
           />
         </div>

@@ -7,13 +7,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/db';
 
 export async function GET() {
   try {
-    const feeds = await prisma.feedSource.findMany({
+    const feeds = await prisma.feed.findMany({
       orderBy: [
         { category: 'asc' },
         { name: 'asc' },
@@ -48,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if feed URL already exists
-    const existing = await prisma.feedSource.findUnique({
+    const existing = await prisma.feed.findUnique({
       where: { url },
     });
 
@@ -60,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create feed
-    const feed = await prisma.feedSource.create({
+    const feed = await prisma.feed.create({
       data: {
         name,
         url,
@@ -68,6 +66,9 @@ export async function POST(request: NextRequest) {
         category,
         updateFrequency: 60, // Default to 60 minutes
         enabled: true,
+        status: 'active',
+        consecutiveFailures: 0,
+        priority: 50,
       },
     });
 
@@ -94,7 +95,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Update feed
-    const feed = await prisma.feedSource.update({
+    const feed = await prisma.feed.update({
       where: { id: feedId },
       data: { enabled },
     });

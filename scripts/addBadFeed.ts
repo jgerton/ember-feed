@@ -1,12 +1,15 @@
 import { prisma } from '../lib/db'
 
 async function addBadFeed() {
-  const badFeed = await prisma.rssFeed.create({
+  const badFeed = await prisma.feed.create({
     data: {
       name: 'Bad Feed (Test)',
       url: 'https://invalid-url-that-does-not-exist.example.com/rss',
+      type: 'rss',
+      category: 'tech',
       priority: 50,
-      status: 'active'
+      status: 'active',
+      enabled: true
     }
   })
 

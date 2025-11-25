@@ -437,6 +437,84 @@ async def get_all_keywords_history(
         return history
 
 
+async def get_enabled_feeds(
+    feed_type: Optional[str] = None,
+    category: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Get enabled feeds from the database for aggregation
+
+    Args:
+        feed_type: Optional filter by type ('rss', 'reddit', 'hackernews', 'api')
+        category: Optional filter by category ('tech', 'business', 'science', etc.)
+
+    Returns:
+        List of feed dicts with url, name, type, category, priority
+    """
+    db_path = get_database_path()
+    logger.info("fetching_enabled_feeds", path=db_path, type=feed_type, category=category)
+
+    async with aiosqlite.connect(db_path) as db:
+        db.row_factory = aiosqlite.Row
+
+        # Build query with optional filters
+        query = """
+            SELECT id, name, url, type, category, priority, lastFetched
+            FROM feeds
+            WHERE enabled = 1 AND status = 'active'
+        """
+        params: List[Any] = []
+
+        if feed_type:
+            query += " AND type = ?"
+            params.append(feed_type)
+
+        if category:
+            query += " AND category = ?"
+            params.append(category)
+
+        query += " ORDER BY priority DESC, name ASC"
+
+        cursor = await db.execute(query, params)
+        rows = await cursor.fetchall()
+
+        feeds = []
+        for row in rows:
+            feeds.append({
+                "id": row["id"],
+                "name": row["name"],
+                "url": row["url"],
+                "type": row["type"],
+                "category": row["category"],
+                "priority": row["priority"],
+                "last_fetched": row["lastFetched"]
+            })
+
+        logger.info("enabled_feeds_fetched", count=len(feeds))
+        return feeds
+
+
+async def update_feed_last_fetched(feed_id: str) -> None:
+    """
+    Update the lastFetched timestamp for a feed
+
+    Args:
+        feed_id: The feed ID to update
+    """
+    db_path = get_database_path()
+
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            """
+            UPDATE feeds
+            SET lastFetched = ?, updatedAt = ?
+            WHERE id = ?
+            """,
+            (datetime.now().isoformat(), datetime.now().isoformat(), feed_id)
+        )
+        await db.commit()
+
+
 async def cleanup_old_data(days_to_keep: int = 30) -> Dict[str, int]:
     """
     Clean up old trending data to prevent database bloat

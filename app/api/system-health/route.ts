@@ -35,7 +35,7 @@ export async function GET() {
       totalTodos
     ] = await Promise.all([
       // Feed health check
-      prisma.rssFeed.findMany({
+      prisma.feed.findMany({
         select: {
           name: true,
           status: true,

@@ -76,7 +76,7 @@ export async function PATCH(
       updateData.status = status
     }
 
-    const feed = await prisma.rssFeed.update({
+    const feed = await prisma.feed.update({
       where: { id: params.id },
       data: updateData
     })
@@ -104,7 +104,7 @@ export async function DELETE(
   try {
     const params = await context.params
 
-    await prisma.rssFeed.delete({
+    await prisma.feed.delete({
       where: { id: params.id }
     })
 

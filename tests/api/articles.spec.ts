@@ -250,7 +250,7 @@ test.describe('Articles API', () => {
   })
 
   test('combines multiple filters correctly', async ({ request }) => {
-    const { data } = await apiGet(request, '/articles', {
+    const { data, ok } = await apiGet(request, '/articles', {
       personalized: 'true',
       limit: '10',
       search: 'web'

@@ -262,3 +262,49 @@ async def fetch_tech_news(limit_per_feed: int = 10) -> List[Dict]:
         return await fetcher.fetch_multiple_feeds(TECH_NEWS_FEEDS, limit_per_feed)
     finally:
         await fetcher.close()
+
+
+async def fetch_user_feeds(limit_per_feed: int = 10) -> List[Dict]:
+    """
+    Fetch RSS feeds from user-configured sources in the database
+
+    This fetches feeds that users have added via ThoughtCapture or
+    direct subscription, making them part of the trending aggregation.
+
+    Args:
+        limit_per_feed: Max entries per feed
+
+    Returns:
+        Combined list of articles from all enabled user feeds
+    """
+    from app.database import get_enabled_feeds, update_feed_last_fetched
+
+    # Get enabled RSS feeds from database
+    db_feeds = await get_enabled_feeds(feed_type="rss")
+
+    if not db_feeds:
+        logger.info("no_user_feeds_configured")
+        return []
+
+    # Convert to format expected by fetch_multiple_feeds
+    feeds = [{"url": f["url"], "name": f["name"]} for f in db_feeds]
+
+    fetcher = RSSFetcher()
+    try:
+        all_articles = []
+        for db_feed in db_feeds:
+            articles = await fetcher.fetch_feed(
+                feed_url=db_feed["url"],
+                source_name=db_feed["name"],
+                limit=limit_per_feed
+            )
+            all_articles.extend(articles)
+
+            # Update last fetched timestamp
+            if articles:
+                await update_feed_last_fetched(db_feed["id"])
+
+        logger.info("user_feeds_fetched", count=len(all_articles), feeds=len(db_feeds))
+        return all_articles
+    finally:
+        await fetcher.close()

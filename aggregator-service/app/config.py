@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     reddit_client_secret: Optional[str] = None
     reddit_user_agent: str = "trending-aggregator/1.0"
 
+    # NewsAPI (https://newsapi.org)
+    news_api_key: Optional[str] = None
+
     # Update frequencies (minutes)
     hackernews_update_freq: int = 30
     reddit_update_freq: int = 30

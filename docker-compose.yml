@@ -66,6 +66,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:-}
       - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
+      - NEWS_API_KEY=${NEWS_API_KEY:-}
     restart: unless-stopped
     depends_on:
       redis:

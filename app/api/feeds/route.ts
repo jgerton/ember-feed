@@ -5,7 +5,7 @@ import { testFeedUrl } from '@/lib/feedHealthService'
 // GET /api/feeds - List all RSS feeds
 export async function GET() {
   try {
-    const feeds = await prisma.rssFeed.findMany({
+    const feeds = await prisma.feed.findMany({
       orderBy: [
         { priority: 'desc' },
         { name: 'asc' }
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     }
 
     // Check if URL already exists
-    const existing = await prisma.rssFeed.findUnique({
+    const existing = await prisma.feed.findUnique({
       where: { url }
     })
 
@@ -72,14 +72,17 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create the feed
-    const feed = await prisma.rssFeed.create({
+    // Create the feed with type and category
+    const feed = await prisma.feed.create({
       data: {
         name,
         url,
+        type: 'rss',  // Default to RSS, can be enhanced later with detection
+        category: 'tech',  // Default category, can be passed from request
         priority: Math.max(0, Math.min(100, priority)), // Clamp between 0-100
         status: 'active',
-        consecutiveFailures: 0
+        consecutiveFailures: 0,
+        enabled: true
       }
     })
 
