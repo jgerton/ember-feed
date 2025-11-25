@@ -183,6 +183,13 @@ model SavedArticle {
 model UserSettings {
   id              String   @id @default(cuid())
   diversityLevel  String   @default("medium") // "low", "medium", "high"
+
+  // NewsAPI Configuration
+  newsApiEnabled    Boolean @default(true)
+  newsApiCategories String  @default("technology,science,business") // comma-separated list
+  newsApiLanguage   String  @default("en")  // ISO 639-1 language code
+  newsApiCountry    String  @default("us")  // ISO 3166-1 alpha-2 country code
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

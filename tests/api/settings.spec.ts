@@ -207,4 +207,149 @@ test.describe('Settings API', () => {
       expect(Array.isArray(lowFeed.articles)).toBe(true)
     }
   })
+
+  // NewsAPI Settings Tests
+  test.describe('NewsAPI Settings', () => {
+    test('GET returns NewsAPI configuration fields', async ({ request }) => {
+      const { data, ok } = await apiGet(request, '/settings')
+
+      expect(ok).toBe(true)
+      // Verify NewsAPI fields are present
+      assertResponseShape(data, [
+        'id',
+        'diversityLevel',
+        'newsApiEnabled',
+        'newsApiCategories',
+        'newsApiLanguage',
+        'newsApiCountry',
+        'createdAt',
+        'updatedAt'
+      ])
+    })
+
+    test('default NewsAPI settings are correct', async ({ request }) => {
+      const { data } = await apiGet(request, '/settings')
+
+      // Verify default values
+      expect(data.newsApiEnabled).toBe(true)
+      expect(data.newsApiCategories).toBe('technology,science,business')
+      expect(data.newsApiLanguage).toBe('en')
+      expect(data.newsApiCountry).toBe('us')
+    })
+
+    test('can update newsApiEnabled to false', async ({ request }) => {
+      const { data, ok } = await apiPatch(request, '/settings', {
+        newsApiEnabled: false
+      })
+
+      expect(ok).toBe(true)
+      expect(data.newsApiEnabled).toBe(false)
+    })
+
+    test('can update newsApiEnabled to true', async ({ request }) => {
+      const { data, ok } = await apiPatch(request, '/settings', {
+        newsApiEnabled: true
+      })
+
+      expect(ok).toBe(true)
+      expect(data.newsApiEnabled).toBe(true)
+    })
+
+    test('can update newsApiCategories', async ({ request }) => {
+      const { data, ok } = await apiPatch(request, '/settings', {
+        newsApiCategories: 'technology,health,sports'
+      })
+
+      expect(ok).toBe(true)
+      expect(data.newsApiCategories).toBe('technology,health,sports')
+    })
+
+    test('rejects invalid newsApiCategories', async ({ request }) => {
+      const { ok, status } = await apiPatch(request, '/settings', {
+        newsApiCategories: 'invalid,fake,categories'
+      })
+
+      expect(ok).toBe(false)
+      expect(status).toBe(400)
+    })
+
+    test('can update newsApiLanguage', async ({ request }) => {
+      const { data, ok } = await apiPatch(request, '/settings', {
+        newsApiLanguage: 'es'
+      })
+
+      expect(ok).toBe(true)
+      expect(data.newsApiLanguage).toBe('es')
+    })
+
+    test('rejects invalid newsApiLanguage', async ({ request }) => {
+      const { ok, status } = await apiPatch(request, '/settings', {
+        newsApiLanguage: 'invalid'
+      })
+
+      expect(ok).toBe(false)
+      expect(status).toBe(400)
+    })
+
+    test('can update newsApiCountry', async ({ request }) => {
+      const { data, ok } = await apiPatch(request, '/settings', {
+        newsApiCountry: 'gb'
+      })
+
+      expect(ok).toBe(true)
+      expect(data.newsApiCountry).toBe('gb')
+    })
+
+    test('rejects invalid newsApiCountry', async ({ request }) => {
+      const { ok, status } = await apiPatch(request, '/settings', {
+        newsApiCountry: 'invalid'
+      })
+
+      expect(ok).toBe(false)
+      expect(status).toBe(400)
+    })
+
+    test('can update multiple NewsAPI fields at once', async ({ request }) => {
+      const { data, ok } = await apiPatch(request, '/settings', {
+        newsApiEnabled: true,
+        newsApiCategories: 'business,entertainment',
+        newsApiLanguage: 'de',
+        newsApiCountry: 'de'
+      })
+
+      expect(ok).toBe(true)
+      expect(data.newsApiEnabled).toBe(true)
+      expect(data.newsApiCategories).toBe('business,entertainment')
+      expect(data.newsApiLanguage).toBe('de')
+      expect(data.newsApiCountry).toBe('de')
+    })
+
+    test('preserves NewsAPI fields on partial update', async ({ request }) => {
+      // First set specific values
+      await apiPatch(request, '/settings', {
+        newsApiCategories: 'technology,science',
+        newsApiLanguage: 'fr'
+      })
+
+      // Then update only diversityLevel
+      await apiPatch(request, '/settings', { diversityLevel: 'high' })
+
+      // Verify NewsAPI fields preserved
+      const { data } = await apiGet(request, '/settings')
+      expect(data.newsApiCategories).toBe('technology,science')
+      expect(data.newsApiLanguage).toBe('fr')
+    })
+
+    test('resets to defaults after test', async ({ request }) => {
+      // Reset to default values for subsequent tests
+      const { ok } = await apiPatch(request, '/settings', {
+        newsApiEnabled: true,
+        newsApiCategories: 'technology,science,business',
+        newsApiLanguage: 'en',
+        newsApiCountry: 'us'
+      })
+
+      expect(ok).toBe(true)
+    })
+  })
 })
