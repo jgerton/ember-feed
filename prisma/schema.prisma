@@ -188,3 +188,101 @@ model Thought {
   @@index([articleId]) // For finding thoughts related to an article
   @@index([category, createdAt]) // Composite index for category-filtered queries
 }
+
+// Feed source configuration for trending topics aggregator
+model FeedSource {
+  id              String   @id @default(cuid())
+  name            String   // "Hacker News", "The Pragmatic Engineer", etc.
+  url             String   @unique
+  type            String   // "rss", "reddit", "hackernews", "substack", "medium", "api"
+  category        String   // "tech", "business", "science", "developer", "startup", etc.
+  updateFrequency Int      @default(60) // minutes between checks
+  lastFetched     DateTime?
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  userSubscriptions UserFeedSubscription[]
+
+  @@map("feed_sources")
+  @@index([category])
+  @@index([enabled])
+  @@index([type])
+  @@index([enabled, updateFrequency]) // For scheduling fetches
+}
+
+// User feed subscriptions for personalized trending
+model UserFeedSubscription {
+  id           String   @id @default(cuid())
+  userId       String   @default("default-user") // For future multi-user support
+  feedSourceId String
+  createdAt    DateTime @default(now())
+
+  // Relations
+  feedSource   FeedSource @relation(fields: [feedSourceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, feedSourceId]) // One subscription per user per feed
+  @@map("user_feed_subscriptions")
+  @@index([userId])
+  @@index([feedSourceId])
+}
+
+// Hot topics - what's popular RIGHT NOW
+model HotTopic {
+  id          String   @id @default(cuid())
+  keyword     String   // The trending keyword/topic
+  timeframe   String   // "24hr", "3day", "7day"
+  rank        Int      // 1-5 for top 5
+  score       Float    // Hacker News algorithm score
+  mentions    Int      // Total mentions across sources
+  summary     String   // Why it's hot - aggregated from articles
+  sources     String   // JSON array: ["HackerNews", "Reddit", "Medium"]
+  sampleUrls  String   // JSON array of top 3 article objects: [{title, url, source}]
+  fetchedAt   DateTime // When this trending data was calculated
+  createdAt   DateTime @default(now())
+
+  @@unique([keyword, timeframe, fetchedAt]) // Prevent duplicates per fetch
+  @@map("hot_topics")
+  @@index([timeframe, rank, fetchedAt]) // For querying top 5 by timeframe
+  @@index([fetchedAt]) // For time-based queries
+  @@index([keyword, timeframe]) // For topic history
+}
+
+// Trending up topics - what's GAINING MOMENTUM
+model TrendingUpTopic {
+  id             String   @id @default(cuid())
+  keyword        String   // The trending keyword/topic
+  timeframe      String   // "7day", "14day", "30day"
+  rank           Int      // 1-5 for top 5
+  velocity       Float    // Growth rate/velocity score
+  currentVolume  Int      // Mentions in current period
+  previousVolume Int      // Mentions in previous period
+  percentGrowth  Float    // Percentage increase
+  summary        String   // Why it's trending up
+  sources        String   // JSON array: ["HackerNews", "Reddit", "Medium"]
+  sampleUrls     String   // JSON array of top 3 article objects
+  fetchedAt      DateTime // When this trending data was calculated
+  createdAt      DateTime @default(now())
+
+  @@unique([keyword, timeframe, fetchedAt]) // Prevent duplicates per fetch
+  @@map("trending_up_topics")
+  @@index([timeframe, rank, fetchedAt]) // For querying top 5 by timeframe
+  @@index([fetchedAt]) // For time-based queries
+  @@index([keyword, timeframe]) // For topic history
+}
+
+// Historical keyword tracking for velocity calculation
+model KeywordHistory {
+  id        String   @id @default(cuid())
+  keyword   String   // The keyword being tracked
+  mentions  Int      // Number of mentions on this date
+  sources   String   // JSON array of sources that mentioned it
+  date      DateTime @default(now()) // Date of this snapshot
+  createdAt DateTime @default(now())
+
+  @@map("keyword_history")
+  @@index([keyword, date]) // For time-series queries per keyword
+  @@index([date]) // For daily aggregations
+  @@index([keyword]) // For keyword lookups
+}

@@ -2,6 +2,27 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { testFeedUrl } from '@/lib/feedHealthService'
 
+// GET /api/feeds - List all RSS feeds
+export async function GET() {
+  try {
+    const feeds = await prisma.rssFeed.findMany({
+      orderBy: [
+        { priority: 'desc' },
+        { name: 'asc' }
+      ]
+    })
+
+    return NextResponse.json(feeds)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('Error listing feeds:', error)
+    return NextResponse.json(
+      { error: 'Failed to list feeds', details: message },
+      { status: 500 }
+    )
+  }
+}
+
 // POST /api/feeds - Create a new RSS feed
 export async function POST(request: Request) {
   try {

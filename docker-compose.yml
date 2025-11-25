@@ -38,6 +38,8 @@ services:
       # Redis connection
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      # Aggregator service
+      - AGGREGATOR_URL=http://aggregator:8000
     stdin_open: true  # Keep container running for interactive debugging
     tty: true
     restart: unless-stopped
@@ -46,19 +48,44 @@ services:
       redis:
         condition: service_healthy
 
-  # Optional: Add a database service later if needed
-  # db:
-  #   image: postgres:15-alpine
-  #   container_name: dashboard-db
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   environment:
-  #     - POSTGRES_DB=dashboard
-  #     - POSTGRES_USER=dashboard_user
-  #     - POSTGRES_PASSWORD=dashboard_pass
-  #   ports:
-  #     - "5432:5432"
-  #   restart: unless-stopped
+  # Trending Topics Aggregator Service (Python FastAPI)
+  aggregator:
+    build:
+      context: ./aggregator-service
+      dockerfile: Dockerfile
+    container_name: aggregator-service
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for development
+      - ./aggregator-service/app:/app/app
+      # Share database file with main app
+      - ./prisma/data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///app/data/dashboard.db
+      - REDIS_URL=redis://redis:6379
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:-}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # RSSHub - Generate RSS feeds for sources without native RSS
+  rsshub:
+    image: diygod/rsshub:latest
+    container_name: rsshub
+    ports:
+      - "1200:1200"
+    environment:
+      - NODE_ENV=production
+      - CACHE_TYPE=redis
+      - REDIS_URL=redis://redis:6379
+      - CACHE_EXPIRE=300
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
 
 volumes:
   redis_data:

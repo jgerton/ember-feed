@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Select } from '@/components/ui/Select'
 
 interface Article {
   id: string
@@ -50,6 +51,7 @@ export default function ThoughtsView({ onCaptureNew }: ThoughtsViewProps) {
   const [thoughts, setThoughts] = useState<Thought[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [allCategories, setAllCategories] = useState<string[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [editCategory, setEditCategory] = useState('')
@@ -68,6 +70,13 @@ export default function ThoughtsView({ onCaptureNew }: ThoughtsViewProps) {
       if (!res.ok) throw new Error('Failed to fetch thoughts')
       const data = await res.json()
       setThoughts(data)
+
+      // Only update allCategories when fetching unfiltered thoughts
+      // This preserves all category options in the dropdown regardless of filter
+      if (!selectedCategory) {
+        const categories = Array.from(new Set(data.map((t: Thought) => t.category).filter(Boolean))) as string[]
+        setAllCategories(categories)
+      }
     } catch (error) {
       console.error('Error fetching thoughts:', error)
     } finally {
@@ -134,8 +143,11 @@ export default function ThoughtsView({ onCaptureNew }: ThoughtsViewProps) {
     return date.toLocaleDateString()
   }
 
-  // Get unique categories
-  const categories = Array.from(new Set(thoughts.map(t => t.category).filter(Boolean)))
+  // Build Select options from allCategories
+  const categoryOptions = [
+    { value: '', label: 'All Categories' },
+    ...allCategories.map(cat => ({ value: cat, label: cat }))
+  ]
 
   if (loading) {
     return (
@@ -157,19 +169,13 @@ export default function ThoughtsView({ onCaptureNew }: ThoughtsViewProps) {
           </div>
 
           {/* Category Filter */}
-          {categories.length > 0 && (
-            <select
+          {allCategories.length > 0 && (
+            <Select
               value={selectedCategory || ''}
-              onChange={(e) => setSelectedCategory(e.target.value || null)}
-              className="px-3 py-1 rounded-lg text-sm bg-neutral-800/30 text-neutral-300 border border-neutral-700/30 focus:outline-none focus:ring-2 focus:ring-ember-500"
-            >
-              <option value="">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat as string}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setSelectedCategory(value || null)}
+              options={categoryOptions}
+              placeholder="All Categories"
+            />
           )}
         </div>
 
