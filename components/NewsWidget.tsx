@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import Pagination from '@/components/Pagination'
 
 interface Article {
   id: string
@@ -29,14 +30,17 @@ interface NewsWidgetProps {
   limit?: number
   onViewAll?: () => void
   articles?: Article[]
+  showPagination?: boolean
 }
 
-export default function NewsWidget({ compact = false, limit = 10, onViewAll, articles: providedArticles }: NewsWidgetProps) {
+export default function NewsWidget({ compact = false, limit = 10, onViewAll, articles: providedArticles, showPagination = true }: NewsWidgetProps) {
   const [articles, setArticles] = useState<Article[]>(providedArticles || [])
   const [loading, setLoading] = useState(!providedArticles)
   const [viewedArticles, setViewedArticles] = useState<Set<string>>(new Set())
   const [expandedArticles, setExpandedArticles] = useState<Set<string>>(new Set())
   const [savedArticles, setSavedArticles] = useState<Set<string>>(new Set())
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const articleRefs = useRef<Map<string, HTMLElement>>(new Map())
 
@@ -45,10 +49,10 @@ export default function NewsWidget({ compact = false, limit = 10, onViewAll, art
       setArticles(providedArticles)
       setLoading(false)
     } else {
-      fetchArticles()
+      fetchArticles(true, currentPage)
     }
     fetchSavedArticles()
-  }, [limit, providedArticles])
+  }, [limit, providedArticles, currentPage])
 
   const fetchSavedArticles = async () => {
     try {
@@ -62,20 +66,36 @@ export default function NewsWidget({ compact = false, limit = 10, onViewAll, art
     }
   }
 
-  const fetchArticles = async (personalized: boolean = true) => {
+  const fetchArticles = async (personalized: boolean = true, page: number = 1) => {
     try {
+      setLoading(true)
       const url = personalized
         ? `/api/articles?limit=${limit}&personalized=true`
-        : `/api/articles?limit=${limit}`
+        : `/api/articles?limit=${limit}&page=${page}`
       const res = await fetch(url)
       if (!res.ok) throw new Error('Failed to fetch articles')
       const data = await res.json()
-      setArticles(data)
+
+      // Handle paginated response
+      if (data.articles) {
+        setArticles(data.articles)
+        if (data.pagination) {
+          setTotalPages(data.pagination.totalPages || 1)
+        }
+      } else if (Array.isArray(data)) {
+        setArticles(data)
+      }
     } catch (error) {
       console.error('Error fetching articles:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    // Scroll to top of article list
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // Track analytics event
@@ -353,6 +373,16 @@ export default function NewsWidget({ compact = false, limit = 10, onViewAll, art
           </article>
         )
       })}
+
+      {/* Pagination - only show when not using provided articles and pagination is enabled */}
+      {showPagination && !providedArticles && totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          disabled={loading}
+        />
+      )}
     </div>
   )
 }

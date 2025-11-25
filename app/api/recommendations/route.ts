@@ -7,15 +7,18 @@ import { createCachedResponse } from '@/lib/cacheHeaders'
 export const runtime = 'nodejs'
 
 // GET /api/recommendations - Get personalized article recommendations
-// Supports pagination for browsing through recommendations
+// Supports both page-based and offset-based pagination
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50) // Max 50 per page
-    const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0) // Offset for pagination
+    const page = parseInt(searchParams.get('page') || '1') // Page number for page-based pagination
+    const offset = searchParams.get('offset') !== null
+      ? Math.max(parseInt(searchParams.get('offset') || '0'), 0)
+      : (page - 1) * limit // Calculate offset from page
 
     // Get more recommendations to support pagination
-    const totalToFetch = offset + limit + 10 // Fetch extra to check if there are more
+    const totalToFetch = offset + limit + 50 // Fetch extra to check if there are more
     const recommendations = await getRecommendations(totalToFetch)
 
     if (recommendations.length === 0) {
@@ -71,14 +74,17 @@ export async function GET(request: Request) {
     // Apply pagination
     const paginatedResults = allResults.slice(offset, offset + limit)
     const hasMore = allResults.length > offset + limit
+    const totalPages = Math.ceil(allResults.length / limit)
 
     const responseData = {
       recommendations: paginatedResults,
       pagination: {
+        page,
         offset,
         limit,
         count: paginatedResults.length,
         total: allResults.length,
+        totalPages,
         hasMore
       }
     }
