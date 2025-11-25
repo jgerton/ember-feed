@@ -15,6 +15,7 @@ import RecommendationsView from '@/components/views/RecommendationsView'
 import ReadLaterView from '@/components/views/ReadLaterView'
 import ThoughtsView from '@/components/views/ThoughtsView'
 import TopicsView from '@/components/views/TopicsView'
+import TrendingDashboard from '@/components/TrendingDashboard'
 import DailySummaryBar from '@/components/DailySummaryBar'
 import QuickActions from '@/components/QuickActions'
 import TasksWidget from '@/components/TasksWidget'
@@ -106,6 +107,18 @@ export default function PrototypeLayout() {
         return (
           <div className="glass-medium rounded-2xl p-6 h-full">
             <AnalyticsDashboard />
+          </div>
+        )
+      case 'trending':
+        return (
+          <div className="glass-medium rounded-2xl p-6 h-full">
+            <h2 className="text-2xl font-bold text-neutral-50 mb-6">Trending Dashboard</h2>
+            <TrendingDashboard
+              onTopicClick={(topic) => {
+                setSelectedTopic(topic)
+                setMainContent('topics')
+              }}
+            />
           </div>
         )
       default:
