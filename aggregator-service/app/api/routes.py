@@ -26,6 +26,7 @@ from app.analyzers import (
 )
 from app.config import settings
 from app import database
+from app import scheduler as feed_scheduler
 
 logger = structlog.get_logger()
 
@@ -247,6 +248,113 @@ async def list_feeds(category: Optional[str] = None, feed_type: Optional[str] = 
         logger.error("list_feeds_failed", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to list feeds")
 
+
+# ============================================================================
+# Scheduler Endpoints
+# ============================================================================
+
+class SchedulerConfigRequest(BaseModel):
+    """Request to configure scheduler"""
+    interval_minutes: Optional[int] = 30
+
+
+@router.get("/scheduler/status")
+async def get_scheduler_status():
+    """
+    Get current scheduler status
+
+    Returns:
+        Scheduler status including running state, interval, and last/next run times
+    """
+    return feed_scheduler.get_scheduler_status()
+
+
+@router.post("/scheduler/start")
+async def start_scheduler(config: Optional[SchedulerConfigRequest] = None):
+    """
+    Start the automatic feed refresh scheduler
+
+    Args:
+        config: Optional configuration with interval_minutes (default: 30)
+
+    Returns:
+        Updated scheduler status
+    """
+    interval = config.interval_minutes if config else 30
+    if interval < 5:
+        raise HTTPException(status_code=400, detail="Interval must be at least 5 minutes")
+    if interval > 1440:
+        raise HTTPException(status_code=400, detail="Interval cannot exceed 1440 minutes (24 hours)")
+
+    return feed_scheduler.start_scheduler(interval_minutes=interval)
+
+
+@router.post("/scheduler/stop")
+async def stop_scheduler():
+    """
+    Stop the automatic feed refresh scheduler
+
+    Returns:
+        Updated scheduler status
+    """
+    return feed_scheduler.stop_scheduler()
+
+
+@router.post("/scheduler/pause")
+async def pause_scheduler():
+    """
+    Pause the scheduler (keeps it running but pauses the job)
+
+    Returns:
+        Updated scheduler status
+    """
+    return feed_scheduler.pause_scheduler()
+
+
+@router.post("/scheduler/resume")
+async def resume_scheduler():
+    """
+    Resume a paused scheduler
+
+    Returns:
+        Updated scheduler status
+    """
+    return feed_scheduler.resume_scheduler()
+
+
+@router.patch("/scheduler/interval")
+async def update_scheduler_interval(config: SchedulerConfigRequest):
+    """
+    Update the scheduler interval
+
+    Args:
+        config: Configuration with new interval_minutes
+
+    Returns:
+        Updated scheduler status
+    """
+    if config.interval_minutes < 5:
+        raise HTTPException(status_code=400, detail="Interval must be at least 5 minutes")
+    if config.interval_minutes > 1440:
+        raise HTTPException(status_code=400, detail="Interval cannot exceed 1440 minutes (24 hours)")
+
+    return feed_scheduler.update_interval(interval_minutes=config.interval_minutes)
+
+
+@router.post("/scheduler/trigger")
+async def trigger_immediate_fetch():
+    """
+    Trigger an immediate fetch without waiting for the schedule
+
+    Returns:
+        Job info for the triggered fetch
+    """
+    return await feed_scheduler.trigger_immediate_fetch()
+
+
+# ============================================================================
+# Background Tasks
+# ============================================================================
 
 # Background task
 async def fetch_and_process_content(job_id: str, sources: Optional[List[str]] = None):
