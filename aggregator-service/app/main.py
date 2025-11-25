@@ -9,8 +9,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
-# Import API routes
+# Import API routes and scheduler
 from app.api import routes
+from app import scheduler as feed_scheduler
 
 # Configure structured logging
 structlog.configure(
@@ -55,12 +56,22 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Detailed health check"""
+    scheduler_status = feed_scheduler.get_scheduler_status()
+
     return {
         "status": "healthy",
         "services": {
             "api": "ok",
             "database": "pending",  # TODO: Add DB health check
-            "redis": "pending"      # TODO: Add Redis health check
+            "redis": "pending",     # TODO: Add Redis health check
+            "scheduler": "running" if scheduler_status["running"] else "stopped"
+        },
+        "scheduler": {
+            "running": scheduler_status["running"],
+            "paused": scheduler_status["paused"],
+            "interval_minutes": scheduler_status["interval_minutes"],
+            "next_run": scheduler_status["next_run"],
+            "total_runs": scheduler_status["total_runs"]
         }
     }
 
