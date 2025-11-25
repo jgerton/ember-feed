@@ -18,7 +18,14 @@ export async function apiGet(request: APIRequestContext, endpoint: string, param
   }
 
   const response = await request.get(url.toString())
-  const data = response.ok() ? await response.json() : null
+
+  // Always try to parse JSON for both success and error responses
+  let data = null
+  try {
+    data = await response.json()
+  } catch {
+    // If JSON parsing fails, data stays null
+  }
 
   return {
     response,
@@ -39,7 +46,13 @@ export async function apiPost(request: APIRequestContext, endpoint: string, body
     }
   })
 
-  const data = response.ok() ? await response.json() : null
+  // Always try to parse JSON for both success and error responses
+  let data = null
+  try {
+    data = await response.json()
+  } catch {
+    // If JSON parsing fails, data stays null
+  }
 
   return {
     response,
@@ -60,7 +73,13 @@ export async function apiPatch(request: APIRequestContext, endpoint: string, bod
     }
   })
 
-  const data = response.ok() ? await response.json() : null
+  // Always try to parse JSON for both success and error responses
+  let data = null
+  try {
+    data = await response.json()
+  } catch {
+    // If JSON parsing fails, data stays null
+  }
 
   return {
     response,
@@ -75,7 +94,14 @@ export async function apiPatch(request: APIRequestContext, endpoint: string, bod
  */
 export async function apiDelete(request: APIRequestContext, endpoint: string) {
   const response = await request.delete(`${API_BASE_URL}${endpoint}`)
-  const data = response.ok() ? await response.json() : null
+
+  // Always try to parse JSON for both success and error responses
+  let data = null
+  try {
+    data = await response.json()
+  } catch {
+    // If JSON parsing fails, data stays null
+  }
 
   return {
     response,

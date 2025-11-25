@@ -86,14 +86,15 @@ export async function getActiveFeedsForSync() {
 /**
  * Test a URL directly (for validation before adding)
  */
-export async function testFeedUrl(url: string): Promise<Omit<FeedHealthResult, 'feedId' | 'name'>> {
+export async function testFeedUrl(url: string): Promise<Omit<FeedHealthResult, 'feedId' | 'name'> & { feedTitle?: string }> {
   try {
     const parsed = await parser.parseURL(url)
 
     return {
       status: 'success',
       success: true,
-      articlesCount: parsed.items.length
+      articlesCount: parsed.items.length,
+      feedTitle: parsed.title
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'

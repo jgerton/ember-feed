@@ -38,6 +38,8 @@ services:
       # Redis connection
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      # Aggregator service
+      - AGGREGATOR_URL=http://aggregator:8000
     stdin_open: true  # Keep container running for interactive debugging
     tty: true
     restart: unless-stopped

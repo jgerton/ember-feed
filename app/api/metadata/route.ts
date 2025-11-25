@@ -7,6 +7,7 @@ import metascraperImage from 'metascraper-image'
 import metascraperTitle from 'metascraper-title'
 import metascraperUrl from 'metascraper-url'
 import * as cheerio from 'cheerio'
+import { testFeedUrl } from '@/lib/feedHealthService'
 
 // Initialize metascraper with plugins
 const scraper = metascraper([
@@ -29,9 +30,18 @@ const COMMON_FEED_PATTERNS = [
   '/index.xml'
 ]
 
-async function discoverRssFeeds(url: string, html: string) {
+interface ValidatedFeed {
+  url: string
+  title: string
+  type: string
+  validated: boolean
+  feedTitle?: string
+  articlesCount?: number
+}
+
+async function discoverRssFeeds(url: string, html: string): Promise<ValidatedFeed[]> {
   const $ = cheerio.load(html)
-  const feeds: Array<{ url: string; title: string; type: string }> = []
+  const potentialFeeds: Array<{ url: string; title: string; type: string }> = []
 
   // 1. Check for RSS autodiscovery links
   $('link[rel="alternate"]').each((_, elem) => {
@@ -41,7 +51,7 @@ async function discoverRssFeeds(url: string, html: string) {
       const title = $(elem).attr('title')
       if (href) {
         try {
-          feeds.push({
+          potentialFeeds.push({
             url: new URL(href, url).href, // Resolve relative URLs
             title: title || '',
             type: type
@@ -54,10 +64,10 @@ async function discoverRssFeeds(url: string, html: string) {
   })
 
   // 2. If no feeds found via autodiscovery, try common patterns
-  if (feeds.length === 0) {
+  if (potentialFeeds.length === 0) {
     const domain = new URL(url).origin
     for (const pattern of COMMON_FEED_PATTERNS) {
-      feeds.push({
+      potentialFeeds.push({
         url: `${domain}${pattern}`,
         title: '',
         type: 'application/rss+xml'
@@ -65,7 +75,28 @@ async function discoverRssFeeds(url: string, html: string) {
     }
   }
 
-  return feeds
+  // 3. Validate each potential feed by actually fetching and parsing it
+  const validationResults = await Promise.all(
+    potentialFeeds.map(async (feed) => {
+      try {
+        const result = await testFeedUrl(feed.url)
+        if (result.success) {
+          return {
+            ...feed,
+            validated: true,
+            feedTitle: result.feedTitle || feed.title,
+            articlesCount: result.articlesCount
+          } as ValidatedFeed
+        }
+        return null
+      } catch {
+        return null
+      }
+    })
+  )
+
+  // Filter out invalid feeds and return only validated ones
+  return validationResults.filter((feed): feed is ValidatedFeed => feed !== null)
 }
 
 // POST /api/metadata - Extract metadata and discover RSS feeds from a URL

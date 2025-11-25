@@ -187,3 +187,111 @@ body.light-mode ::selection {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Custom Select Component Styles */
+.select-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  min-width: 140px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  border-radius: 0.5rem;
+  background-color: rgba(38, 38, 38, 0.3);
+  color: #d4d4d4;
+  border: 1px solid rgba(64, 64, 64, 0.3);
+  cursor: pointer;
+}
+
+.select-trigger:hover {
+  background-color: rgba(38, 38, 38, 0.5);
+}
+
+.select-trigger:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #f97316;
+}
+
+.select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  width: 100%;
+  min-width: 160px;
+  max-height: 240px;
+  overflow-y: auto;
+  background-color: #262626;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+  padding: 0.25rem;
+}
+
+.select-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  text-align: left;
+  border-radius: 0.375rem;
+  color: #d4d4d4;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.select-option:hover,
+.select-option-highlighted {
+  background-color: #404040;
+}
+
+.select-option-selected {
+  background-color: rgba(249, 115, 22, 0.2);
+  color: #fb923c;
+}
+
+.select-option-selected:hover,
+.select-option-selected.select-option-highlighted {
+  background-color: rgba(249, 115, 22, 0.3);
+}
+
+/* Light mode overrides for Select */
+body.light-mode .select-trigger {
+  background-color: rgba(245, 245, 244, 0.8);
+  color: #404040;
+  border-color: #d4d4d4;
+}
+
+body.light-mode .select-trigger:hover {
+  background-color: rgba(229, 229, 229, 0.9);
+}
+
+body.light-mode .select-dropdown {
+  background-color: #ffffff;
+  border-color: #e5e5e5;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .select-option {
+  color: #404040;
+}
+
+body.light-mode .select-option:hover,
+body.light-mode .select-option-highlighted {
+  background-color: #f5f5f4;
+}
+
+body.light-mode .select-option-selected {
+  background-color: rgba(249, 115, 22, 0.1);
+  color: #ea580c;
+}
+
+body.light-mode .select-option-selected:hover,
+body.light-mode .select-option-selected.select-option-highlighted {
+  background-color: rgba(249, 115, 22, 0.15);
+}
