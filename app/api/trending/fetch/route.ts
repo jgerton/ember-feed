@@ -43,6 +43,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Validate jobId format to prevent SSRF attacks
+// Only allow alphanumeric characters, hyphens, and underscores (typical for UUIDs and job IDs)
+function isValidJobId(jobId: string): boolean {
+  const validJobIdPattern = /^[a-zA-Z0-9_-]{1,64}$/;
+  return validJobIdPattern.test(jobId);
+}
+
 // GET to check job status
 export async function GET(request: NextRequest) {
   try {
@@ -56,8 +63,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Proxy request to aggregator service
-    const response = await fetch(`${AGGREGATOR_URL}/api/fetch/${jobId}`);
+    // Validate jobId format to prevent SSRF/path traversal attacks
+    if (!isValidJobId(jobId)) {
+      return NextResponse.json(
+        { error: 'Invalid jobId format' },
+        { status: 400 }
+      );
+    }
+
+    // Proxy request to aggregator service (jobId is now validated)
+    const response = await fetch(`${AGGREGATOR_URL}/api/fetch/${encodeURIComponent(jobId)}`);
 
     if (!response.ok) {
       const error = await response.text();
