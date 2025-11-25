@@ -13,7 +13,15 @@ interface Feed {
   lastFailureAt: string | null
   lastErrorMessage: string | null
   priority: number
+  category: string
+  type: string
+  enabled: boolean
+  updateFrequency: number
 }
+
+// Valid options for dropdowns
+const FEED_CATEGORIES = ['tech', 'business', 'science', 'developer', 'startup'] as const
+const FEED_TYPES = ['rss', 'reddit', 'hackernews', 'substack', 'medium', 'api'] as const
 
 interface FeedHealthSummary {
   total: number
@@ -36,11 +44,15 @@ export default function FeedAdmin() {
   const [newFeedName, setNewFeedName] = useState('')
   const [newFeedUrl, setNewFeedUrl] = useState('')
   const [newFeedPriority, setNewFeedPriority] = useState(50)
+  const [newFeedCategory, setNewFeedCategory] = useState<typeof FEED_CATEGORIES[number]>('tech')
+  const [newFeedType, setNewFeedType] = useState<typeof FEED_TYPES[number]>('rss')
+  const [newFeedUpdateFrequency, setNewFeedUpdateFrequency] = useState(60)
   const [adding, setAdding] = useState(false)
 
-  // Edit priority state
+  // Edit state for inline editing
   const [editingPriorityId, setEditingPriorityId] = useState<string | null>(null)
   const [editPriorityValue, setEditPriorityValue] = useState(50)
+  const [updatingField, setUpdatingField] = useState<string | null>(null)
 
   const fetchHealth = async () => {
     try {
@@ -111,7 +123,10 @@ export default function FeedAdmin() {
         body: JSON.stringify({
           name: newFeedName.trim(),
           url: newFeedUrl.trim(),
-          priority: newFeedPriority
+          priority: newFeedPriority,
+          category: newFeedCategory,
+          type: newFeedType,
+          updateFrequency: newFeedUpdateFrequency
         })
       })
 
@@ -122,6 +137,9 @@ export default function FeedAdmin() {
         setNewFeedName('')
         setNewFeedUrl('')
         setNewFeedPriority(50)
+        setNewFeedCategory('tech')
+        setNewFeedType('rss')
+        setNewFeedUpdateFrequency(60)
         setShowAddForm(false)
         await fetchHealth()
       } else {
@@ -131,6 +149,29 @@ export default function FeedAdmin() {
       setMessage({ type: 'error', text: 'Failed to add feed' })
     } finally {
       setAdding(false)
+    }
+  }
+
+  const updateFeed = async (feedId: string, updates: Partial<Pick<Feed, 'category' | 'type' | 'enabled' | 'updateFrequency'>>) => {
+    setUpdatingField(feedId)
+    try {
+      const res = await fetch(`/api/feeds/${feedId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      })
+
+      const result = await res.json()
+
+      if (result.success) {
+        await fetchHealth()
+      } else {
+        setMessage({ type: 'error', text: 'Failed to update feed' })
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to update feed' })
+    } finally {
+      setUpdatingField(null)
     }
   }
 
@@ -253,6 +294,34 @@ export default function FeedAdmin() {
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-neutral-300 mb-1">Category</label>
+                <select
+                  value={newFeedCategory}
+                  onChange={(e) => setNewFeedCategory(e.target.value as typeof FEED_CATEGORIES[number])}
+                  className="w-full p-2 bg-neutral-800/50 border border-white/10 text-neutral-50 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-ember-500 transition-colors"
+                >
+                  {FEED_CATEGORIES.map(cat => (
+                    <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-300 mb-1">Type</label>
+                <select
+                  value={newFeedType}
+                  onChange={(e) => setNewFeedType(e.target.value as typeof FEED_TYPES[number])}
+                  className="w-full p-2 bg-neutral-800/50 border border-white/10 text-neutral-50 rounded-lg focus:ring-2 focus:ring-ember-500 focus:border-ember-500 transition-colors"
+                >
+                  {FEED_TYPES.map(type => (
+                    <option key={type} value={type}>{type.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-1">
                 Priority (0-100): {newFeedPriority}
@@ -263,6 +332,21 @@ export default function FeedAdmin() {
                 max="100"
                 value={newFeedPriority}
                 onChange={(e) => setNewFeedPriority(parseInt(e.target.value))}
+                className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-ember-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-1">
+                Update Frequency: {newFeedUpdateFrequency} min ({Math.round(newFeedUpdateFrequency / 60 * 10) / 10} hrs)
+              </label>
+              <input
+                type="range"
+                min="15"
+                max="1440"
+                step="15"
+                value={newFeedUpdateFrequency}
+                onChange={(e) => setNewFeedUpdateFrequency(parseInt(e.target.value))}
                 className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-ember-500"
               />
             </div>
@@ -313,11 +397,28 @@ export default function FeedAdmin() {
         {summary.feeds.map((feed) => (
           <div
             key={feed.id}
-            className="glass-light border border-white/10 rounded-lg p-4 hover:border-white/20 transition-all"
+            className={`glass-light border rounded-lg p-4 hover:border-white/20 transition-all ${
+              feed.enabled ? 'border-white/10' : 'border-neutral-600/50 opacity-60'
+            }`}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
+                  {/* Enabled toggle */}
+                  <button
+                    onClick={() => updateFeed(feed.id, { enabled: !feed.enabled })}
+                    disabled={updatingField === feed.id}
+                    className={`w-10 h-5 rounded-full transition-colors relative ${
+                      feed.enabled ? 'bg-green-500' : 'bg-neutral-600'
+                    }`}
+                    title={feed.enabled ? 'Enabled - click to disable' : 'Disabled - click to enable'}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                        feed.enabled ? 'left-5' : 'left-0.5'
+                      }`}
+                    />
+                  </button>
                   <h3 className="text-lg font-semibold text-neutral-50">{feed.name}</h3>
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(feed.status)}`}
@@ -335,8 +436,40 @@ export default function FeedAdmin() {
                   <span className="font-mono">{feed.url}</span>
                 </div>
 
-                <div className="flex gap-6 text-sm text-neutral-400">
-                  <div className="flex items-center gap-2">
+                {/* Feed metadata row */}
+                <div className="flex flex-wrap gap-4 text-sm text-neutral-400 mb-2">
+                  {/* Category dropdown */}
+                  <div className="flex items-center gap-1">
+                    <span>Category:</span>
+                    <select
+                      value={feed.category}
+                      onChange={(e) => updateFeed(feed.id, { category: e.target.value })}
+                      disabled={updatingField === feed.id}
+                      className="px-2 py-0.5 bg-neutral-800/50 border border-white/10 text-neutral-300 rounded text-xs focus:ring-1 focus:ring-ember-500"
+                    >
+                      {FEED_CATEGORIES.map(cat => (
+                        <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Type dropdown */}
+                  <div className="flex items-center gap-1">
+                    <span>Type:</span>
+                    <select
+                      value={feed.type}
+                      onChange={(e) => updateFeed(feed.id, { type: e.target.value })}
+                      disabled={updatingField === feed.id}
+                      className="px-2 py-0.5 bg-neutral-800/50 border border-white/10 text-neutral-300 rounded text-xs focus:ring-1 focus:ring-ember-500"
+                    >
+                      {FEED_TYPES.map(type => (
+                        <option key={type} value={type}>{type.toUpperCase()}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Priority inline edit */}
+                  <div className="flex items-center gap-1">
                     {editingPriorityId === feed.id ? (
                       <>
                         <span>Priority:</span>
@@ -352,7 +485,7 @@ export default function FeedAdmin() {
                             if (e.key === 'Escape') setEditingPriorityId(null)
                           }}
                           autoFocus
-                          className="w-16 px-2 py-1 bg-neutral-800/50 border border-white/10 text-neutral-50 rounded focus:ring-2 focus:ring-ember-500"
+                          className="w-14 px-2 py-0.5 bg-neutral-800/50 border border-white/10 text-neutral-50 rounded text-xs focus:ring-1 focus:ring-ember-500"
                         />
                       </>
                     ) : (
@@ -365,11 +498,35 @@ export default function FeedAdmin() {
                           }}
                           className="font-medium text-neutral-300 hover:text-ember-500 transition-colors"
                         >
-                          {feed.priority} ✏️
+                          {feed.priority}
                         </button>
                       </>
                     )}
                   </div>
+
+                  {/* Update frequency */}
+                  <div className="flex items-center gap-1">
+                    <span>Refresh:</span>
+                    <select
+                      value={feed.updateFrequency}
+                      onChange={(e) => updateFeed(feed.id, { updateFrequency: parseInt(e.target.value) })}
+                      disabled={updatingField === feed.id}
+                      className="px-2 py-0.5 bg-neutral-800/50 border border-white/10 text-neutral-300 rounded text-xs focus:ring-1 focus:ring-ember-500"
+                    >
+                      <option value={15}>15 min</option>
+                      <option value={30}>30 min</option>
+                      <option value={60}>1 hr</option>
+                      <option value={120}>2 hrs</option>
+                      <option value={240}>4 hrs</option>
+                      <option value={360}>6 hrs</option>
+                      <option value={720}>12 hrs</option>
+                      <option value={1440}>24 hrs</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Timestamps row */}
+                <div className="flex gap-6 text-sm text-neutral-400">
                   {feed.lastSuccessAt && (
                     <div>
                       Last success:{' '}

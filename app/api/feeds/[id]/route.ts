@@ -45,6 +45,10 @@ export async function POST(
   }
 }
 
+// Valid feed types and categories
+const VALID_FEED_TYPES = ['rss', 'reddit', 'hackernews', 'substack', 'medium', 'api'] as const
+const VALID_FEED_CATEGORIES = ['tech', 'business', 'science', 'developer', 'startup'] as const
+
 // PATCH /api/feeds/[id] - Update a feed
 export async function PATCH(
   request: Request,
@@ -53,12 +57,16 @@ export async function PATCH(
   try {
     const params = await context.params
     const body = await request.json()
-    const { name, priority, status } = body
+    const { name, priority, status, category, type, enabled, updateFrequency } = body
 
     const updateData: {
       name?: string
       priority?: number
       status?: string
+      category?: string
+      type?: string
+      enabled?: boolean
+      updateFrequency?: number
     } = {}
 
     if (name !== undefined) updateData.name = name
@@ -74,6 +82,31 @@ export async function PATCH(
         )
       }
       updateData.status = status
+    }
+    if (category !== undefined) {
+      if (!VALID_FEED_CATEGORIES.includes(category)) {
+        return NextResponse.json(
+          { error: `Invalid category. Must be one of: ${VALID_FEED_CATEGORIES.join(', ')}` },
+          { status: 400 }
+        )
+      }
+      updateData.category = category
+    }
+    if (type !== undefined) {
+      if (!VALID_FEED_TYPES.includes(type)) {
+        return NextResponse.json(
+          { error: `Invalid type. Must be one of: ${VALID_FEED_TYPES.join(', ')}` },
+          { status: 400 }
+        )
+      }
+      updateData.type = type
+    }
+    if (enabled !== undefined) {
+      updateData.enabled = Boolean(enabled)
+    }
+    if (updateFrequency !== undefined) {
+      // Clamp between 15 minutes and 24 hours (1440 minutes)
+      updateData.updateFrequency = Math.max(15, Math.min(1440, updateFrequency))
     }
 
     const feed = await prisma.feed.update({

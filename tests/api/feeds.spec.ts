@@ -184,6 +184,150 @@ test.describe('/feeds', () => {
       expect(data.feed.priority).toBe(75)
       expect(data.feed.status).toBe('quarantined')
     })
+
+    test('updates feed category', async ({ request }) => {
+      const { data: createData, ok: createOk } = await createTestFeed(request, `Category Test ${Date.now()}`, uniqueUrl())
+      expect(createOk).toBe(true)
+
+      const feedId = createData.feed.id
+
+      const { data, ok, status } = await apiPatch(request, `/feeds/${feedId}`, {
+        category: 'business'
+      })
+
+      expect(ok).toBe(true)
+      expect(status).toBe(200)
+      expect(data.feed.category).toBe('business')
+    })
+
+    test('updates feed type', async ({ request }) => {
+      const { data: createData, ok: createOk } = await createTestFeed(request, `Type Test ${Date.now()}`, uniqueUrl())
+      expect(createOk).toBe(true)
+
+      const feedId = createData.feed.id
+
+      const { data, ok, status } = await apiPatch(request, `/feeds/${feedId}`, {
+        type: 'substack'
+      })
+
+      expect(ok).toBe(true)
+      expect(status).toBe(200)
+      expect(data.feed.type).toBe('substack')
+    })
+
+    test('toggles feed enabled status', async ({ request }) => {
+      const { data: createData, ok: createOk } = await createTestFeed(request, `Enabled Test ${Date.now()}`, uniqueUrl())
+      expect(createOk).toBe(true)
+
+      const feedId = createData.feed.id
+
+      // Disable the feed
+      const { data: data1, ok: ok1 } = await apiPatch(request, `/feeds/${feedId}`, {
+        enabled: false
+      })
+
+      expect(ok1).toBe(true)
+      expect(data1.feed.enabled).toBe(false)
+
+      // Re-enable the feed
+      const { data: data2, ok: ok2 } = await apiPatch(request, `/feeds/${feedId}`, {
+        enabled: true
+      })
+
+      expect(ok2).toBe(true)
+      expect(data2.feed.enabled).toBe(true)
+    })
+
+    test('updates feed updateFrequency', async ({ request }) => {
+      const { data: createData, ok: createOk } = await createTestFeed(request, `Frequency Test ${Date.now()}`, uniqueUrl())
+      expect(createOk).toBe(true)
+
+      const feedId = createData.feed.id
+
+      const { data, ok, status } = await apiPatch(request, `/feeds/${feedId}`, {
+        updateFrequency: 120
+      })
+
+      expect(ok).toBe(true)
+      expect(status).toBe(200)
+      expect(data.feed.updateFrequency).toBe(120)
+    })
+
+    test('rejects invalid category', async ({ request }) => {
+      const { data: createData, ok: createOk } = await createTestFeed(request, `Invalid Category Test ${Date.now()}`, uniqueUrl())
+      expect(createOk).toBe(true)
+
+      const feedId = createData.feed.id
+
+      const { data, ok, status } = await apiPatch(request, `/feeds/${feedId}`, {
+        category: 'invalid-category'
+      })
+
+      expect(ok).toBe(false)
+      expect(status).toBe(400)
+      expect(data.error).toContain('category')
+    })
+
+    test('rejects invalid type', async ({ request }) => {
+      const { data: createData, ok: createOk } = await createTestFeed(request, `Invalid Type Test ${Date.now()}`, uniqueUrl())
+      expect(createOk).toBe(true)
+
+      const feedId = createData.feed.id
+
+      const { data, ok, status } = await apiPatch(request, `/feeds/${feedId}`, {
+        type: 'invalid-type'
+      })
+
+      expect(ok).toBe(false)
+      expect(status).toBe(400)
+      expect(data.error).toContain('type')
+    })
+
+    test('clamps updateFrequency to valid range', async ({ request }) => {
+      const { data: createData, ok: createOk } = await createTestFeed(request, `Frequency Clamp Test ${Date.now()}`, uniqueUrl())
+      expect(createOk).toBe(true)
+
+      const feedId = createData.feed.id
+
+      // Test with value below minimum (15 minutes)
+      const { data: data1, ok: ok1 } = await apiPatch(request, `/feeds/${feedId}`, {
+        updateFrequency: 5
+      })
+
+      expect(ok1).toBe(true)
+      expect(data1.feed.updateFrequency).toBeGreaterThanOrEqual(15)
+
+      // Test with value above maximum (1440 minutes = 24 hours)
+      const { data: data2, ok: ok2 } = await apiPatch(request, `/feeds/${feedId}`, {
+        updateFrequency: 2000
+      })
+
+      expect(ok2).toBe(true)
+      expect(data2.feed.updateFrequency).toBeLessThanOrEqual(1440)
+    })
+
+    test('updates multiple fields at once', async ({ request }) => {
+      const { data: createData, ok: createOk } = await createTestFeed(request, `Multi Update Test ${Date.now()}`, uniqueUrl())
+      expect(createOk).toBe(true)
+
+      const feedId = createData.feed.id
+
+      const { data, ok, status } = await apiPatch(request, `/feeds/${feedId}`, {
+        category: 'science',
+        type: 'medium',
+        enabled: false,
+        updateFrequency: 180,
+        priority: 80
+      })
+
+      expect(ok).toBe(true)
+      expect(status).toBe(200)
+      expect(data.feed.category).toBe('science')
+      expect(data.feed.type).toBe('medium')
+      expect(data.feed.enabled).toBe(false)
+      expect(data.feed.updateFrequency).toBe(180)
+      expect(data.feed.priority).toBe(80)
+    })
   })
 
   test.describe('DELETE /api/feeds/[id] - Delete feed', () => {
