@@ -30,6 +30,50 @@ const COMMON_FEED_PATTERNS = [
   '/index.xml'
 ]
 
+// SSRF protection: block internal/private IPs and localhost
+function isBlockedUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    const hostname = parsed.hostname.toLowerCase()
+
+    // Block localhost and common localhost aliases
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+      return true
+    }
+
+    // Block private IP ranges
+    // 10.0.0.0 - 10.255.255.255
+    // 172.16.0.0 - 172.31.255.255
+    // 192.168.0.0 - 192.168.255.255
+    // 169.254.0.0 - 169.254.255.255 (link-local)
+    const ipv4Pattern = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
+    const match = hostname.match(ipv4Pattern)
+    if (match) {
+      const [, a, b] = match.map(Number)
+      if (a === 10) return true // 10.x.x.x
+      if (a === 172 && b >= 16 && b <= 31) return true // 172.16-31.x.x
+      if (a === 192 && b === 168) return true // 192.168.x.x
+      if (a === 169 && b === 254) return true // 169.254.x.x
+      if (a === 127) return true // 127.x.x.x
+      if (a === 0) return true // 0.x.x.x
+    }
+
+    // Block internal hostnames
+    if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
+      return true
+    }
+
+    // Block file:// and other non-http(s) protocols
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return true
+    }
+
+    return false
+  } catch {
+    return true // Block malformed URLs
+  }
+}
+
 interface ValidatedFeed {
   url: string
   title: string
@@ -115,10 +159,18 @@ export async function POST(request: Request) {
     // Validate URL format
     try {
       new URL(url)
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid URL format' },
         { status: 400 }
+      )
+    }
+
+    // SSRF protection: block internal/private URLs
+    if (isBlockedUrl(url)) {
+      return NextResponse.json(
+        { error: 'URL not allowed: internal or private addresses are blocked' },
+        { status: 403 }
       )
     }
 

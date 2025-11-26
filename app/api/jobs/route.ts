@@ -12,6 +12,20 @@ import { handleApiError, ValidationError, validateRequired } from '@/lib/errorHa
 // Force Node.js runtime
 export const runtime = 'nodejs'
 
+// Sanitize log output to prevent log injection attacks
+function sanitizeLogInput(input: string): string {
+  // Using character codes to avoid ESLint no-control-regex warning
+  let result = ''
+  for (const char of input) {
+    const code = char.charCodeAt(0)
+    // Skip control characters (0-31) and DEL (127)
+    if (code >= 32 && code !== 127) {
+      result += char
+    }
+  }
+  return result
+}
+
 // POST /api/jobs - Trigger a background job
 export async function POST(request: Request) {
   try {
@@ -39,7 +53,7 @@ export async function POST(request: Request) {
           throw new ValidationError('articleId is required for topic extraction', 'articleId')
         }
         job = await queueTopicExtraction(data.articleId)
-        console.log('Queued topic extraction job:', job.id, 'for article:', data.articleId)
+        console.log('Queued topic extraction job:', job.id, 'for article:', sanitizeLogInput(String(data.articleId)))
         break
 
       default:
