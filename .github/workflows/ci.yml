@@ -77,6 +77,9 @@ jobs:
           rm package-lock.json
           npm install
 
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
       - name: Build Next.js application
         run: npm run build
         env:
