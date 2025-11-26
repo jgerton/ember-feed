@@ -12,20 +12,20 @@ export default function Home() {
   const [layoutMode, setLayoutMode] = useLayoutMode()
 
   return (
-    <main className="min-h-screen glass-background p-6 md:p-8">
+    <main className="min-h-screen glass-background p-4 sm:p-6 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <header className="mb-8">
-          <div className="flex items-center justify-between">
+        <header className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-bold text-ember-500 mb-2">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-ember-500 mb-1 sm:mb-2">
                 Ember Feed
               </h1>
-              <p className="text-neutral-400">
+              <p className="text-sm sm:text-base text-neutral-400">
                 Your personalized news dashboard
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <SystemHealthStatus mode={layoutMode === 'morning-brief' ? 'multi-ring' : 'radial-gauge'} />
               <LayoutToggle mode={layoutMode} onChange={setLayoutMode} />
               <ThemeToggle />

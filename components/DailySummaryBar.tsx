@@ -42,37 +42,37 @@ export default function DailySummaryBar() {
       {/* Compact Bar */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-6 py-3 flex items-center justify-between hover:bg-neutral-800/20 transition-colors"
+        className="w-full px-4 sm:px-6 py-3 flex items-center justify-between hover:bg-neutral-800/20 transition-colors"
       >
-        <div className="flex items-center gap-6">
-          <span className="text-sm font-medium text-neutral-300">Today:</span>
-          <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-6 flex-wrap sm:flex-nowrap">
+          <span className="text-sm font-medium text-neutral-300 hidden sm:inline">Today:</span>
+          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
             <a
               href="#news-feed"
-              className="flex items-center gap-2 hover:text-ember-400 transition-colors"
+              className="flex items-center gap-1 sm:gap-2 hover:text-ember-400 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               <span className="text-ember-500 font-semibold">{stats.totalArticles}</span>
               <span className="text-xs text-neutral-400">articles</span>
             </a>
-            <span className="text-neutral-700">•</span>
+            <span className="text-neutral-700 hidden sm:inline">•</span>
             <a
               href="#quick-tasks"
-              className="flex items-center gap-2 hover:text-ember-400 transition-colors"
+              className="flex items-center gap-1 sm:gap-2 hover:text-ember-400 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               <span className="text-ember-500 font-semibold">{stats.activeTasks}</span>
               <span className="text-xs text-neutral-400">tasks</span>
             </a>
-            <span className="text-neutral-700">•</span>
-            <div className="flex items-center gap-2">
+            <span className="text-neutral-700 hidden sm:inline">•</span>
+            <div className="flex items-center gap-1 sm:gap-2">
               <span className="text-green-500 font-semibold">{stats.completedTasks}</span>
               <span className="text-xs text-neutral-400">done</span>
             </div>
             {stats.newIdeas > 0 && (
               <>
-                <span className="text-neutral-700">•</span>
-                <div className="flex items-center gap-2">
+                <span className="text-neutral-700 hidden sm:inline">•</span>
+                <div className="flex items-center gap-1 sm:gap-2">
                   <span className="text-cyan-500 font-semibold">{stats.newIdeas}</span>
                   <span className="text-xs text-neutral-400">ideas</span>
                 </div>
@@ -81,8 +81,8 @@ export default function DailySummaryBar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-neutral-500">
-          <span>{isExpanded ? 'Hide' : 'Details'}</span>
+        <div className="flex items-center gap-1 sm:gap-2 text-xs text-neutral-500 flex-shrink-0 ml-2">
+          <span className="hidden sm:inline">{isExpanded ? 'Hide' : 'Details'}</span>
           <svg
             className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
             fill="none"
