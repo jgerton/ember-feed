@@ -70,10 +70,12 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        # Use npm install instead of npm ci to resolve platform-specific
-        # optional dependencies (lightningcss binaries for Tailwind 4)
-        # when package-lock.json was generated on a different platform
-        run: npm install
+        run: npm ci
+
+      - name: Install lightningcss binary for Linux
+        # Package-lock.json generated on Windows doesn't include Linux binaries
+        # Tailwind 4 requires lightningcss native module for CSS processing
+        run: npm install lightningcss-linux-x64-gnu@1.30.2
 
       - name: Build Next.js application
         run: npm run build
