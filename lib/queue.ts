@@ -116,6 +116,21 @@ export async function queueRecommendationComputation() {
   return job
 }
 
+// Sanitize log output to prevent log injection attacks
+function sanitizeLogInput(input: string): string {
+  // Remove newlines, carriage returns, and control characters
+  // Using character codes to avoid ESLint no-control-regex warning
+  let result = ''
+  for (const char of input) {
+    const code = char.charCodeAt(0)
+    // Skip control characters (0-31) and DEL (127)
+    if (code >= 32 && code !== 127) {
+      result += char
+    }
+  }
+  return result
+}
+
 export async function queueTopicExtraction(articleId: string) {
   const job = await topicExtractionQueue.add(
     'extract-topics',
@@ -124,7 +139,7 @@ export async function queueTopicExtraction(articleId: string) {
       priority: 1, // High priority (process new articles quickly)
     }
   )
-  console.log(`📋 Queued topic extraction for article: ${articleId}`)
+  console.log(`📋 Queued topic extraction for article: ${sanitizeLogInput(articleId)}`)
   return job
 }
 

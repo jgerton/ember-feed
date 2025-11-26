@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+// Escape special regex characters to prevent regex injection
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 // Calculate relevance score for search results
 function calculateRelevance(article: any, query: string): number {
   if (!query) return 0
@@ -12,12 +17,15 @@ function calculateRelevance(article: any, query: string): number {
 
   let score = 0
 
+  // Escape the query to prevent regex injection attacks
+  const escapedQuery = escapeRegex(lowerQuery)
+
   // Title matches (weight: 3x)
-  const titleMatches = (title.match(new RegExp(lowerQuery, 'gi')) || []).length
+  const titleMatches = (title.match(new RegExp(escapedQuery, 'gi')) || []).length
   score += titleMatches * 3
 
   // Description matches (weight: 1x)
-  const descriptionMatches = (description.match(new RegExp(lowerQuery, 'gi')) || []).length
+  const descriptionMatches = (description.match(new RegExp(escapedQuery, 'gi')) || []).length
   score += descriptionMatches * 1
 
   // Source matches (weight: 2x)

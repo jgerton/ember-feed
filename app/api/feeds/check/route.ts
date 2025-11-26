@@ -32,8 +32,12 @@ export async function POST(request: Request) {
       )
     }
 
-    // Normalize URL for comparison (remove trailing slashes, etc.)
-    const normalizedUrl = url.trim().replace(/\/+$/, '')
+    // Normalize URL for comparison (remove trailing slashes)
+    // Use a simple loop instead of regex to avoid potential ReDoS
+    let normalizedUrl = url.trim()
+    while (normalizedUrl.endsWith('/')) {
+      normalizedUrl = normalizedUrl.slice(0, -1)
+    }
 
     // Check if feed exists in database
     const feed = await prisma.feed.findFirst({
