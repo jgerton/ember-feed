@@ -536,3 +536,101 @@ async def fetch_and_process_content(job_id: str, sources: Optional[List[str]] = 
             "started_at": fetch_jobs[job_id]["started_at"],
             "failed_at": datetime.now().isoformat()
         }
+
+
+# ============================================================================
+# Discovery Endpoints
+# ============================================================================
+
+@router.get("/discover")
+async def discover_content(
+    categories: str = "technology,programming",
+    limit: int = 30
+):
+    """
+    Discover trending content from Substack and Medium
+
+    Args:
+        categories: Comma-separated list of categories (technology, programming, ai, startup, finance)
+        limit: Maximum number of articles to return (default: 30)
+
+    Returns:
+        Trending articles from both platforms, sorted by engagement
+    """
+    from app.fetchers.discovery import discover_trending
+
+    try:
+        cat_list = [c.strip() for c in categories.split(",") if c.strip()]
+        result = await discover_trending(categories=cat_list, limit=limit)
+        return result
+    except Exception as e:
+        logger.error("discover_content_failed", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to fetch discovery content")
+
+
+@router.get("/discover/authors")
+async def discover_popular_authors(category: str = "technology"):
+    """
+    Discover popular authors across Substack and Medium
+
+    Args:
+        category: Category to discover authors for
+
+    Returns:
+        Lists of popular authors from both platforms
+    """
+    from app.fetchers.discovery import discover_authors
+
+    try:
+        result = await discover_authors(category=category)
+        return result
+    except Exception as e:
+        logger.error("discover_authors_failed", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to discover authors")
+
+
+@router.get("/authors/search")
+async def search_authors(
+    name: str,
+    platform: str = "all"
+):
+    """
+    Search for authors by name across platforms
+
+    Args:
+        name: Author name to search for (min 2 characters)
+        platform: Platform to search ("all", "substack", "medium")
+
+    Returns:
+        List of matching authors with feed URLs
+    """
+    from app.fetchers.discovery import search_all_authors
+
+    if len(name) < 2:
+        raise HTTPException(status_code=400, detail="Name must be at least 2 characters")
+
+    if platform not in ["all", "substack", "medium"]:
+        raise HTTPException(status_code=400, detail="Platform must be 'all', 'substack', or 'medium'")
+
+    try:
+        result = await search_all_authors(query=name, platform=platform, limit=10)
+        return result
+    except Exception as e:
+        logger.error("search_authors_failed", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to search authors")
+
+
+@router.get("/discover/status")
+async def get_discovery_status():
+    """
+    Get status of discovery platforms
+
+    Returns:
+        Status of each platform (available, method, api_configured)
+    """
+    from app.fetchers.discovery import _discovery
+
+    return {
+        "platforms": _discovery.get_platform_status(),
+        "supported_categories": ["technology", "programming", "ai", "startup", "finance"]
+    }
