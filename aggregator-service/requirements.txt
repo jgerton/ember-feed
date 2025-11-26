@@ -42,6 +42,9 @@ structlog==24.4.0
 # Scheduling
 apscheduler==3.10.4
 
+# Substack API
+substack-api>=1.0.0
+
 # Testing
 pytest==8.3.0
 pytest-asyncio==0.24.0
