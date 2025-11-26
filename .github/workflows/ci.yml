@@ -72,10 +72,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install lightningcss binary for Linux
+      - name: Install native binaries for Linux
         # Package-lock.json generated on Windows doesn't include Linux binaries
-        # Tailwind 4 requires lightningcss native module for CSS processing
-        run: npm install lightningcss-linux-x64-gnu@1.30.2
+        # Tailwind 4 requires these native modules for CSS processing
+        run: npm install lightningcss-linux-x64-gnu@1.30.2 @tailwindcss/oxide-linux-x64-gnu@4.1.17
 
       - name: Build Next.js application
         run: npm run build
