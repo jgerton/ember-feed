@@ -57,19 +57,29 @@ export async function GET(request: Request) {
     const articleMap = new Map(articles.map(a => [a.id, a]))
 
     // Combine articles with their recommendation metadata
-    const allResults = recommendations.map(rec => {
-      const article = articleMap.get(rec.articleId)
-      if (!article) return null
+    const allResults = recommendations
+      .flatMap(rec => {
+        const article = articleMap.get(rec.articleId)
+        if (!article) return []
 
-      return {
-        ...article,
-        recommendation: {
-          score: rec.score,
-          reason: rec.reason,
-          breakdown: rec.breakdown
+        const result = {
+          id: article.id,
+          title: article.title,
+          description: article.description,
+          url: article.url,
+          source: article.source,
+          score: article.score,
+          publishedAt: article.publishedAt,
+          createdAt: article.createdAt,
+          topics: article.topics,
+          recommendation: {
+            score: rec.score,
+            reason: rec.reason,
+            breakdown: rec.breakdown
+          }
         }
-      }
-    }).filter(Boolean)
+        return [result]
+      })
 
     // Apply pagination
     const paginatedResults = allResults.slice(offset, offset + limit)
