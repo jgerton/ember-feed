@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import NewsWidget from '@/components/NewsWidget'
 import TodaysPriorities from '@/components/TodaysPriorities'
 import TrendingTopics from '@/components/TrendingTopics'
@@ -31,11 +32,21 @@ import ThoughtCaptureModal from '@/components/ThoughtCaptureModal'
  * - Footer: Collections Links navigation
  */
 export default function PrototypeLayout() {
+  const router = useRouter()
   const [mainContent, setMainContent] = useState<CollectionView>('digest')
   const [isNewsExpanded, setIsNewsExpanded] = useState(false)
   const [isThoughtModalOpen, setIsThoughtModalOpen] = useState(false)
   const [thoughtArticleContext, setThoughtArticleContext] = useState<{id: string, title: string} | undefined>()
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
+
+  // Handle navigation - some views are separate pages
+  const handleNavigate = (view: CollectionView) => {
+    if (view === 'discover') {
+      router.push('/discover')
+    } else {
+      setMainContent(view)
+    }
+  }
 
   const renderMainContent = () => {
     switch (mainContent) {
@@ -214,7 +225,7 @@ export default function PrototypeLayout() {
       </div>
 
       {/* Footer: Collections Links */}
-      <CollectionsLinks onNavigate={setMainContent} activeView={mainContent} />
+      <CollectionsLinks onNavigate={handleNavigate} activeView={mainContent} />
 
       {/* Thought Capture Modal - Available globally */}
       <ThoughtCaptureModal
