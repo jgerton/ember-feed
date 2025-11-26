@@ -20,6 +20,7 @@
     "snapshot": "playwright test tests/visual.spec.ts --headed --grep 'homepage renders correctly'"
   },
   "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.0.1",
     "@prisma/client": "^6.19.0",
     "@types/d3": "^7.4.3",
     "@types/node-cron": "^3.0.11",
