@@ -53,8 +53,12 @@ export async function GET(request: Request) {
       }
     })
 
-    // Create article map for quick lookup
-    const articleMap = new Map(articles.map(a => [a.id, a]))
+    // Create article map for quick lookup - use explicit type for proper inference
+    type ArticleWithTopics = typeof articles[number]
+    const articleMap = new Map<string, ArticleWithTopics>()
+    for (const article of articles) {
+      articleMap.set(article.id, article)
+    }
 
     // Combine articles with their recommendation metadata
     const allResults = recommendations
@@ -62,7 +66,7 @@ export async function GET(request: Request) {
         const article = articleMap.get(rec.articleId)
         if (!article) return []
 
-        const result = {
+        return [{
           id: article.id,
           title: article.title,
           description: article.description,
@@ -77,8 +81,7 @@ export async function GET(request: Request) {
             reason: rec.reason,
             breakdown: rec.breakdown
           }
-        }
-        return [result]
+        }]
       })
 
     // Apply pagination
