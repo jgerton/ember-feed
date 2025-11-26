@@ -15,9 +15,30 @@ export default defineConfig({
   },
 
   projects: [
+    // Desktop browsers
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+
+    // Mobile devices
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'] },
+    },
+    {
+      name: 'mobile-safari',
+      use: { ...devices['iPhone 12'] },
+    },
+
+    // Tablet
+    {
+      name: 'tablet',
+      use: { ...devices['iPad (gen 7)'] },
     },
   ],
 

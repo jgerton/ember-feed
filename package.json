@@ -16,6 +16,9 @@
     "test:visual": "playwright test tests/visual.spec.ts --headed",
     "test:visual:headless": "playwright test tests/visual.spec.ts",
     "test:visual:ui": "playwright test tests/visual.spec.ts --ui",
+    "test:responsive": "playwright test tests/responsive.spec.ts",
+    "test:mobile": "playwright test --project=mobile-chrome --project=mobile-safari",
+    "test:desktop": "playwright test --project=chromium --project=firefox",
     "test:all": "playwright test tests/",
     "snapshot": "playwright test tests/visual.spec.ts --headed --grep 'homepage renders correctly'"
   },
