@@ -6,8 +6,9 @@ FROM node:22-alpine
 WORKDIR /app
 
 # Install dependencies first (better caching)
-# This layer only rebuilds when package.json changes
-COPY package*.json ./
+# Only copy package.json (not package-lock.json) because lock file
+# was generated on Windows and doesn't include Linux native binaries
+COPY package.json ./
 RUN npm install
 
 # Copy the rest of the application
