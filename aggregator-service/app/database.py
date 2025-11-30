@@ -1,65 +1,57 @@
 """
 Database module for trending topics storage
 
-Uses aiosqlite to interact with the same SQLite database as Prisma.
+Uses SQLAlchemy with asyncpg for PostgreSQL async database access.
 Table names match Prisma's @@map() directives.
 """
 
-import aiosqlite
 import json
-from datetime import datetime
-from typing import List, Dict, Optional, Any
-import structlog
 import os
-from pathlib import Path
+import time
+import uuid
+from datetime import datetime, timedelta
+from typing import List, Dict, Optional, Any
+
+import structlog
+from sqlalchemy import select, delete, and_, desc
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+from .models import Base, Feed, HotTopic, TrendingUpTopic, KeywordHistory
 
 logger = structlog.get_logger()
 
-# Database path - matches Prisma's location
-# Prisma uses file:./data/dashboard.db relative to prisma/ folder
-# Docker uses sqlite:///app/data/dashboard.db
-def get_database_path() -> str:
-    """Get the database path, handling both Docker and local dev environments"""
-    # Check for environment variable override
-    db_url = os.environ.get("DATABASE_URL", "")
 
-    # Handle Docker's sqlite:// URL format
-    if db_url.startswith("sqlite:///"):
-        path = db_url.replace("sqlite:///", "/")
-        if Path(path).exists() or Path(path).parent.exists():
-            return path
+def get_database_url() -> str:
+    """Get the PostgreSQL database URL from environment"""
+    db_url = os.environ.get(
+        "DATABASE_URL",
+        "postgresql://ember:ember_dev@localhost:5432/ember_feed"
+    )
+    # Convert postgresql:// to postgresql+asyncpg:// for async support
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return db_url
 
-    # Handle Prisma's file: URL format (local dev)
-    if db_url.startswith("file:"):
-        # Parse Prisma-style file URL - it's relative to prisma folder
-        path = db_url.replace("file:", "").replace("./", "")
-        # The path is relative to prisma folder, so: prisma/data/dashboard.db
-        project_root = Path(__file__).parent.parent.parent
-        prisma_relative = project_root / "prisma" / path
-        if prisma_relative.exists():
-            return str(prisma_relative)
 
-    # Default paths to try (in order of preference)
-    paths = [
-        "/app/data/dashboard.db",  # Docker (from docker-compose volume mount)
-        Path(__file__).parent.parent.parent / "prisma" / "data" / "dashboard.db",  # Local dev (correct location)
-        Path(__file__).parent.parent.parent / "data" / "dashboard.db",  # Alternative
-        Path(__file__).parent.parent.parent / "prisma" / "dev.db",  # Old location
-    ]
+# Create async engine with connection pooling
+engine = create_async_engine(
+    get_database_url(),
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    echo=os.environ.get("DEBUG_SQL", "").lower() == "true",
+)
 
-    for path in paths:
-        if Path(path).exists():
-            return str(path)
-
-    # Fall back to Docker path (most common deployment)
-    return "/app/data/dashboard.db"
+# Create async session factory
+async_session = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
 def generate_cuid() -> str:
     """Generate a CUID-like ID to match Prisma's default"""
-    import uuid
-    import time
-    # Simple CUID-like ID: timestamp + random
     timestamp = hex(int(time.time() * 1000))[2:]
     random_part = uuid.uuid4().hex[:12]
     return f"c{timestamp}{random_part}"
@@ -81,38 +73,31 @@ async def store_hot_topics(
     Returns:
         Number of topics stored
     """
-    db_path = get_database_path()
-    logger.info("storing_hot_topics", path=db_path, timeframe=timeframe, count=len(topics))
+    logger.info("storing_hot_topics", timeframe=timeframe, count=len(topics))
 
-    async with aiosqlite.connect(db_path) as db:
+    async with async_session() as session:
         stored = 0
         for i, topic in enumerate(topics):
             try:
-                topic_id = generate_cuid()
-                await db.execute(
-                    """
-                    INSERT INTO hot_topics (id, keyword, timeframe, rank, score, mentions, summary, sources, sampleUrls, fetchedAt, createdAt)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        topic_id,
-                        topic.get("keyword", ""),
-                        timeframe,
-                        i + 1,  # rank 1-5
-                        topic.get("score", 0.0),
-                        topic.get("mentions", 0),
-                        topic.get("summary", ""),
-                        json.dumps(topic.get("sources", [])),
-                        json.dumps(topic.get("sample_articles", [])),
-                        fetched_at.isoformat(),
-                        datetime.now().isoformat()
-                    )
+                hot_topic = HotTopic(
+                    id=generate_cuid(),
+                    keyword=topic.get("keyword", ""),
+                    timeframe=timeframe,
+                    rank=i + 1,
+                    score=topic.get("score", 0.0),
+                    mentions=topic.get("mentions", 0),
+                    summary=topic.get("summary", ""),
+                    sources=json.dumps(topic.get("sources", [])),
+                    sampleUrls=json.dumps(topic.get("sample_articles", [])),
+                    fetchedAt=fetched_at,
+                    createdAt=datetime.utcnow(),
                 )
+                session.add(hot_topic)
                 stored += 1
             except Exception as e:
                 logger.error("store_hot_topic_failed", keyword=topic.get("keyword"), error=str(e))
 
-        await db.commit()
+        await session.commit()
         logger.info("hot_topics_stored", count=stored, timeframe=timeframe)
         return stored
 
@@ -133,40 +118,33 @@ async def store_trending_up_topics(
     Returns:
         Number of topics stored
     """
-    db_path = get_database_path()
-    logger.info("storing_trending_up_topics", path=db_path, timeframe=timeframe, count=len(topics))
+    logger.info("storing_trending_up_topics", timeframe=timeframe, count=len(topics))
 
-    async with aiosqlite.connect(db_path) as db:
+    async with async_session() as session:
         stored = 0
         for i, topic in enumerate(topics):
             try:
-                topic_id = generate_cuid()
-                await db.execute(
-                    """
-                    INSERT INTO trending_up_topics (id, keyword, timeframe, rank, velocity, currentVolume, previousVolume, percentGrowth, summary, sources, sampleUrls, fetchedAt, createdAt)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        topic_id,
-                        topic.get("keyword", ""),
-                        timeframe,
-                        i + 1,  # rank 1-5
-                        topic.get("velocity", 0.0),
-                        topic.get("current_volume", 0),
-                        topic.get("previous_volume", 0),
-                        topic.get("percent_growth", 0.0),
-                        topic.get("summary", ""),
-                        json.dumps(topic.get("sources", [])),
-                        json.dumps(topic.get("sample_articles", [])),
-                        fetched_at.isoformat(),
-                        datetime.now().isoformat()
-                    )
+                trending_topic = TrendingUpTopic(
+                    id=generate_cuid(),
+                    keyword=topic.get("keyword", ""),
+                    timeframe=timeframe,
+                    rank=i + 1,
+                    velocity=topic.get("velocity", 0.0),
+                    currentVolume=topic.get("current_volume", 0),
+                    previousVolume=topic.get("previous_volume", 0),
+                    percentGrowth=topic.get("percent_growth", 0.0),
+                    summary=topic.get("summary", ""),
+                    sources=json.dumps(topic.get("sources", [])),
+                    sampleUrls=json.dumps(topic.get("sample_articles", [])),
+                    fetchedAt=fetched_at,
+                    createdAt=datetime.utcnow(),
                 )
+                session.add(trending_topic)
                 stored += 1
             except Exception as e:
                 logger.error("store_trending_up_topic_failed", keyword=topic.get("keyword"), error=str(e))
 
-        await db.commit()
+        await session.commit()
         logger.info("trending_up_topics_stored", count=stored, timeframe=timeframe)
         return stored
 
@@ -185,33 +163,26 @@ async def store_keyword_history(
     Returns:
         Number of keywords stored
     """
-    db_path = get_database_path()
-    logger.info("storing_keyword_history", path=db_path, count=len(keywords))
+    logger.info("storing_keyword_history", count=len(keywords))
 
-    async with aiosqlite.connect(db_path) as db:
+    async with async_session() as session:
         stored = 0
         for kw in keywords:
             try:
-                kw_id = generate_cuid()
-                await db.execute(
-                    """
-                    INSERT INTO keyword_history (id, keyword, mentions, sources, date, createdAt)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        kw_id,
-                        kw.get("keyword", ""),
-                        kw.get("mentions", kw.get("count", 0)),
-                        json.dumps(kw.get("sources", [])),
-                        date.isoformat(),
-                        datetime.now().isoformat()
-                    )
+                keyword_hist = KeywordHistory(
+                    id=generate_cuid(),
+                    keyword=kw.get("keyword", ""),
+                    mentions=kw.get("mentions", kw.get("count", 0)),
+                    sources=json.dumps(kw.get("sources", [])),
+                    date=date,
+                    createdAt=datetime.utcnow(),
                 )
+                session.add(keyword_hist)
                 stored += 1
             except Exception as e:
                 logger.error("store_keyword_history_failed", keyword=kw.get("keyword"), error=str(e))
 
-        await db.commit()
+        await session.commit()
         logger.info("keyword_history_stored", count=stored)
         return stored
 
@@ -230,54 +201,49 @@ async def get_hot_topics(
     Returns:
         List of hot topic dicts
     """
-    db_path = get_database_path()
-    logger.info("fetching_hot_topics", path=db_path, timeframe=timeframe, limit=limit)
+    logger.info("fetching_hot_topics", timeframe=timeframe, limit=limit)
 
-    async with aiosqlite.connect(db_path) as db:
-        db.row_factory = aiosqlite.Row
-
+    async with async_session() as session:
         # Get the most recent fetch timestamp for this timeframe
-        cursor = await db.execute(
-            """
-            SELECT DISTINCT fetchedAt
-            FROM hot_topics
-            WHERE timeframe = ?
-            ORDER BY fetchedAt DESC
-            LIMIT 1
-            """,
-            (timeframe,)
+        stmt = (
+            select(HotTopic.fetchedAt)
+            .where(HotTopic.timeframe == timeframe)
+            .order_by(desc(HotTopic.fetchedAt))
+            .limit(1)
         )
-        row = await cursor.fetchone()
+        result = await session.execute(stmt)
+        row = result.scalar_one_or_none()
 
         if not row:
             logger.info("no_hot_topics_found", timeframe=timeframe)
             return []
 
-        latest_fetch = row["fetchedAt"]
+        latest_fetch = row
 
         # Get topics from that fetch
-        cursor = await db.execute(
-            """
-            SELECT * FROM hot_topics
-            WHERE timeframe = ? AND fetchedAt = ?
-            ORDER BY rank ASC
-            LIMIT ?
-            """,
-            (timeframe, latest_fetch, limit)
+        stmt = (
+            select(HotTopic)
+            .where(and_(
+                HotTopic.timeframe == timeframe,
+                HotTopic.fetchedAt == latest_fetch
+            ))
+            .order_by(HotTopic.rank)
+            .limit(limit)
         )
-        rows = await cursor.fetchall()
+        result = await session.execute(stmt)
+        rows = result.scalars().all()
 
         topics = []
         for row in rows:
             topics.append({
-                "rank": row["rank"],
-                "keyword": row["keyword"],
-                "score": row["score"],
-                "mentions": row["mentions"],
-                "summary": row["summary"],
-                "sources": json.loads(row["sources"]),
-                "sample_articles": json.loads(row["sampleUrls"]),
-                "fetched_at": row["fetchedAt"]
+                "rank": row.rank,
+                "keyword": row.keyword,
+                "score": row.score,
+                "mentions": row.mentions,
+                "summary": row.summary,
+                "sources": json.loads(row.sources),
+                "sample_articles": json.loads(row.sampleUrls),
+                "fetched_at": row.fetchedAt.isoformat() if row.fetchedAt else None,
             })
 
         logger.info("hot_topics_fetched", count=len(topics), timeframe=timeframe)
@@ -298,56 +264,51 @@ async def get_trending_up_topics(
     Returns:
         List of trending up topic dicts
     """
-    db_path = get_database_path()
-    logger.info("fetching_trending_up_topics", path=db_path, timeframe=timeframe, limit=limit)
+    logger.info("fetching_trending_up_topics", timeframe=timeframe, limit=limit)
 
-    async with aiosqlite.connect(db_path) as db:
-        db.row_factory = aiosqlite.Row
-
+    async with async_session() as session:
         # Get the most recent fetch timestamp for this timeframe
-        cursor = await db.execute(
-            """
-            SELECT DISTINCT fetchedAt
-            FROM trending_up_topics
-            WHERE timeframe = ?
-            ORDER BY fetchedAt DESC
-            LIMIT 1
-            """,
-            (timeframe,)
+        stmt = (
+            select(TrendingUpTopic.fetchedAt)
+            .where(TrendingUpTopic.timeframe == timeframe)
+            .order_by(desc(TrendingUpTopic.fetchedAt))
+            .limit(1)
         )
-        row = await cursor.fetchone()
+        result = await session.execute(stmt)
+        row = result.scalar_one_or_none()
 
         if not row:
             logger.info("no_trending_up_topics_found", timeframe=timeframe)
             return []
 
-        latest_fetch = row["fetchedAt"]
+        latest_fetch = row
 
         # Get topics from that fetch
-        cursor = await db.execute(
-            """
-            SELECT * FROM trending_up_topics
-            WHERE timeframe = ? AND fetchedAt = ?
-            ORDER BY rank ASC
-            LIMIT ?
-            """,
-            (timeframe, latest_fetch, limit)
+        stmt = (
+            select(TrendingUpTopic)
+            .where(and_(
+                TrendingUpTopic.timeframe == timeframe,
+                TrendingUpTopic.fetchedAt == latest_fetch
+            ))
+            .order_by(TrendingUpTopic.rank)
+            .limit(limit)
         )
-        rows = await cursor.fetchall()
+        result = await session.execute(stmt)
+        rows = result.scalars().all()
 
         topics = []
         for row in rows:
             topics.append({
-                "rank": row["rank"],
-                "keyword": row["keyword"],
-                "velocity": row["velocity"],
-                "current_volume": row["currentVolume"],
-                "previous_volume": row["previousVolume"],
-                "percent_growth": row["percentGrowth"],
-                "summary": row["summary"],
-                "sources": json.loads(row["sources"]),
-                "sample_articles": json.loads(row["sampleUrls"]),
-                "fetched_at": row["fetchedAt"]
+                "rank": row.rank,
+                "keyword": row.keyword,
+                "velocity": row.velocity,
+                "current_volume": row.currentVolume,
+                "previous_volume": row.previousVolume,
+                "percent_growth": row.percentGrowth,
+                "summary": row.summary,
+                "sources": json.loads(row.sources),
+                "sample_articles": json.loads(row.sampleUrls),
+                "fetched_at": row.fetchedAt.isoformat() if row.fetchedAt else None,
             })
 
         logger.info("trending_up_topics_fetched", count=len(topics), timeframe=timeframe)
@@ -368,29 +329,27 @@ async def get_keyword_history(
     Returns:
         List of history entries sorted by date
     """
-    db_path = get_database_path()
+    async with async_session() as session:
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
 
-    async with aiosqlite.connect(db_path) as db:
-        db.row_factory = aiosqlite.Row
-
-        cursor = await db.execute(
-            """
-            SELECT * FROM keyword_history
-            WHERE keyword = ?
-            AND date >= datetime('now', ?)
-            ORDER BY date ASC
-            """,
-            (keyword, f"-{days} days")
+        stmt = (
+            select(KeywordHistory)
+            .where(and_(
+                KeywordHistory.keyword == keyword,
+                KeywordHistory.date >= cutoff_date
+            ))
+            .order_by(KeywordHistory.date)
         )
-        rows = await cursor.fetchall()
+        result = await session.execute(stmt)
+        rows = result.scalars().all()
 
         history = []
         for row in rows:
             history.append({
-                "keyword": row["keyword"],
-                "mentions": row["mentions"],
-                "sources": json.loads(row["sources"]),
-                "date": row["date"]
+                "keyword": row.keyword,
+                "mentions": row.mentions,
+                "sources": json.loads(row.sources),
+                "date": row.date.isoformat() if row.date else None,
             })
 
         return history
@@ -408,30 +367,26 @@ async def get_all_keywords_history(
     Returns:
         Dict mapping keyword -> list of history entries
     """
-    db_path = get_database_path()
+    async with async_session() as session:
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
 
-    async with aiosqlite.connect(db_path) as db:
-        db.row_factory = aiosqlite.Row
-
-        cursor = await db.execute(
-            """
-            SELECT * FROM keyword_history
-            WHERE date >= datetime('now', ?)
-            ORDER BY keyword, date ASC
-            """,
-            (f"-{days} days",)
+        stmt = (
+            select(KeywordHistory)
+            .where(KeywordHistory.date >= cutoff_date)
+            .order_by(KeywordHistory.keyword, KeywordHistory.date)
         )
-        rows = await cursor.fetchall()
+        result = await session.execute(stmt)
+        rows = result.scalars().all()
 
         history: Dict[str, List[Dict[str, Any]]] = {}
         for row in rows:
-            keyword = row["keyword"]
+            keyword = row.keyword
             if keyword not in history:
                 history[keyword] = []
             history[keyword].append({
-                "mentions": row["mentions"],
-                "sources": json.loads(row["sources"]),
-                "date": row["date"]
+                "mentions": row.mentions,
+                "sources": json.loads(row.sources),
+                "date": row.date.isoformat() if row.date else None,
             })
 
         return history
@@ -451,43 +406,39 @@ async def get_enabled_feeds(
     Returns:
         List of feed dicts with url, name, type, category, priority
     """
-    db_path = get_database_path()
-    logger.info("fetching_enabled_feeds", path=db_path, type=feed_type, category=category)
+    logger.info("fetching_enabled_feeds", type=feed_type, category=category)
 
-    async with aiosqlite.connect(db_path) as db:
-        db.row_factory = aiosqlite.Row
-
+    async with async_session() as session:
         # Build query with optional filters
-        query = """
-            SELECT id, name, url, type, category, priority, lastFetched
-            FROM feeds
-            WHERE enabled = 1 AND status = 'active'
-        """
-        params: List[Any] = []
+        conditions = [
+            Feed.enabled == True,
+            Feed.status == "active"
+        ]
 
         if feed_type:
-            query += " AND type = ?"
-            params.append(feed_type)
-
+            conditions.append(Feed.type == feed_type)
         if category:
-            query += " AND category = ?"
-            params.append(category)
+            conditions.append(Feed.category == category)
 
-        query += " ORDER BY priority DESC, name ASC"
+        stmt = (
+            select(Feed)
+            .where(and_(*conditions))
+            .order_by(desc(Feed.priority), Feed.name)
+        )
 
-        cursor = await db.execute(query, params)
-        rows = await cursor.fetchall()
+        result = await session.execute(stmt)
+        rows = result.scalars().all()
 
         feeds = []
         for row in rows:
             feeds.append({
-                "id": row["id"],
-                "name": row["name"],
-                "url": row["url"],
-                "type": row["type"],
-                "category": row["category"],
-                "priority": row["priority"],
-                "last_fetched": row["lastFetched"]
+                "id": row.id,
+                "name": row.name,
+                "url": row.url,
+                "type": row.type,
+                "category": row.category,
+                "priority": row.priority,
+                "last_fetched": row.lastFetched.isoformat() if row.lastFetched else None,
             })
 
         logger.info("enabled_feeds_fetched", count=len(feeds))
@@ -501,18 +452,15 @@ async def update_feed_last_fetched(feed_id: str) -> None:
     Args:
         feed_id: The feed ID to update
     """
-    db_path = get_database_path()
+    async with async_session() as session:
+        stmt = select(Feed).where(Feed.id == feed_id)
+        result = await session.execute(stmt)
+        feed = result.scalar_one_or_none()
 
-    async with aiosqlite.connect(db_path) as db:
-        await db.execute(
-            """
-            UPDATE feeds
-            SET lastFetched = ?, updatedAt = ?
-            WHERE id = ?
-            """,
-            (datetime.now().isoformat(), datetime.now().isoformat(), feed_id)
-        )
-        await db.commit()
+        if feed:
+            feed.lastFetched = datetime.utcnow()
+            feed.updatedAt = datetime.utcnow()
+            await session.commit()
 
 
 async def cleanup_old_data(days_to_keep: int = 30) -> Dict[str, int]:
@@ -525,42 +473,28 @@ async def cleanup_old_data(days_to_keep: int = 30) -> Dict[str, int]:
     Returns:
         Dict with counts of deleted rows per table
     """
-    db_path = get_database_path()
     logger.info("cleaning_old_data", days_to_keep=days_to_keep)
 
-    async with aiosqlite.connect(db_path) as db:
-        deleted = {}
+    cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
+    deleted = {}
 
+    async with async_session() as session:
         # Clean hot_topics
-        cursor = await db.execute(
-            """
-            DELETE FROM hot_topics
-            WHERE fetchedAt < datetime('now', ?)
-            """,
-            (f"-{days_to_keep} days",)
-        )
-        deleted["hot_topics"] = cursor.rowcount
+        stmt = delete(HotTopic).where(HotTopic.fetchedAt < cutoff_date)
+        result = await session.execute(stmt)
+        deleted["hot_topics"] = result.rowcount
 
         # Clean trending_up_topics
-        cursor = await db.execute(
-            """
-            DELETE FROM trending_up_topics
-            WHERE fetchedAt < datetime('now', ?)
-            """,
-            (f"-{days_to_keep} days",)
-        )
-        deleted["trending_up_topics"] = cursor.rowcount
+        stmt = delete(TrendingUpTopic).where(TrendingUpTopic.fetchedAt < cutoff_date)
+        result = await session.execute(stmt)
+        deleted["trending_up_topics"] = result.rowcount
 
         # Clean keyword_history
-        cursor = await db.execute(
-            """
-            DELETE FROM keyword_history
-            WHERE date < datetime('now', ?)
-            """,
-            (f"-{days_to_keep} days",)
-        )
-        deleted["keyword_history"] = cursor.rowcount
+        stmt = delete(KeywordHistory).where(KeywordHistory.date < cutoff_date)
+        result = await session.execute(stmt)
+        deleted["keyword_history"] = result.rowcount
 
-        await db.commit()
-        logger.info("old_data_cleaned", deleted=deleted)
-        return deleted
+        await session.commit()
+
+    logger.info("old_data_cleaned", deleted=deleted)
+    return deleted

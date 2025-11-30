@@ -5,8 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  // URL is now configured in prisma.config.ts and lib/db.ts adapter
+  provider = "postgresql"
 }
 
 // Todo model for task management
