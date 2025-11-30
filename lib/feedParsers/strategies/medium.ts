@@ -27,9 +27,16 @@ export const mediumStrategy: ParserStrategy = {
   platform: 'medium',
 
   detect: (feedUrl: string, generator?: string): boolean => {
-    const url = feedUrl.toLowerCase()
     const gen = (generator || '').toLowerCase()
-    return url.includes('medium.com') || gen.includes('medium')
+    // Check generator field first (most reliable)
+    if (gen.includes('medium')) return true
+    // Parse URL properly to check hostname
+    try {
+      const parsedUrl = new URL(feedUrl)
+      return parsedUrl.hostname === 'medium.com' || parsedUrl.hostname.endsWith('.medium.com')
+    } catch {
+      return false
+    }
   },
 
   parse: (item: ExtendedRssItem, feedMeta: FeedMeta): ParsedArticle => {

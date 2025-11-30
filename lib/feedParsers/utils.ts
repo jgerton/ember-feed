@@ -5,20 +5,36 @@
  */
 
 /**
- * Strip all HTML tags from a string
+ * Decode HTML entities to their character equivalents.
+ * Used for converting HTML text content to plain text.
+ */
+function decodeHtmlEntities(text: string): string {
+  const entities: Record<string, string> = {
+    '&nbsp;': ' ',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&#x27;': "'",
+    '&apos;': "'",
+  }
+  return text.replace(/&(?:#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (match) => {
+    return entities[match] ?? match
+  })
+}
+
+/**
+ * Strip all HTML tags from a string and decode entities.
+ * Output is plain text safe for display (not for HTML insertion).
  */
 export function stripHtml(html: string | undefined | null): string {
   if (!html) return ''
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim()
+  // First strip HTML tags, then decode entities
+  // This order ensures encoded tags like &lt;script&gt; don't become executable
+  const stripped = html.replace(/<[^>]*>/g, ' ')
+  const decoded = decodeHtmlEntities(stripped)
+  return decoded.replace(/\s+/g, ' ').trim()
 }
 
 /**

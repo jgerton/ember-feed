@@ -23,9 +23,16 @@ export const substackStrategy: ParserStrategy = {
   platform: 'substack',
 
   detect: (feedUrl: string, generator?: string): boolean => {
-    const url = feedUrl.toLowerCase()
     const gen = (generator || '').toLowerCase()
-    return url.includes('substack.com') || gen.includes('substack')
+    // Check generator field first (most reliable)
+    if (gen.includes('substack')) return true
+    // Parse URL properly to check hostname
+    try {
+      const parsedUrl = new URL(feedUrl)
+      return parsedUrl.hostname === 'substack.com' || parsedUrl.hostname.endsWith('.substack.com')
+    } catch {
+      return false
+    }
   },
 
   parse: (item: ExtendedRssItem, feedMeta: FeedMeta): ParsedArticle => {
