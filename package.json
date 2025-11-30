@@ -69,5 +69,9 @@
     "tailwindcss": "^4.1.17",
     "tsx": "^4.20.6",
     "typescript": "^5"
+  },
+  "overrides": {
+    "hono": ">=4.10.3",
+    "valibot": ">=1.1.1"
   }
 }
