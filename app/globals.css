@@ -15,6 +15,14 @@
   --color-ember-950: #431407;
 }
 
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility glass-light {
   background: rgba(38, 38, 38, 0.4);
   backdrop-filter: blur(10px);

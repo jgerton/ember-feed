@@ -24,10 +24,10 @@ nltk==3.9.1
 # Deduplication
 datasketch==1.6.5
 
-# Database
+# Database (PostgreSQL)
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
-aiosqlite==0.20.0
+sqlalchemy[asyncio]==2.0.36
 
 # Caching
 redis==5.0.0

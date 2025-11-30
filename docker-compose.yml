@@ -1,4 +1,23 @@
 services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ember-feed-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ember
+      POSTGRES_PASSWORD: ember_dev
+      POSTGRES_DB: ember_feed
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ember -d ember_feed"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   # Redis cache
   redis:
     image: redis:7-alpine
@@ -26,12 +45,14 @@ services:
     volumes:
       # Mount source code for hot reload
       - .:/app
-      # Exclude node_modules (use container's version)
+      # Anonymous volume for node_modules (platform-specific binaries rebuilt each time)
       - /app/node_modules
-      # Persist Next.js cache for faster rebuilds
-      - ./.next:/app/.next
+      # Anonymous volume for .next (don't use host's Windows-compiled cache)
+      - /app/.next
     environment:
       - NODE_ENV=development
+      # Database connection (PostgreSQL)
+      - DATABASE_URL=postgresql://ember:ember_dev@postgres:5432/ember_feed
       # Enable hot reload polling for Windows/Mac
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
@@ -43,8 +64,10 @@ services:
     stdin_open: true  # Keep container running for interactive debugging
     tty: true
     restart: unless-stopped
-    command: npm run dev
+    command: sh -c "npx prisma db push && npm run dev"
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -59,16 +82,16 @@ services:
     volumes:
       # Mount source code for development
       - ./aggregator-service/app:/app/app
-      # Share database file with main app
-      - ./prisma/data:/app/data
     environment:
-      - DATABASE_URL=sqlite:///app/data/dashboard.db
+      - DATABASE_URL=postgresql://ember:ember_dev@postgres:5432/ember_feed
       - REDIS_URL=redis://redis:6379
       - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:-}
       - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
       - NEWS_API_KEY=${NEWS_API_KEY:-}
     restart: unless-stopped
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -89,4 +112,5 @@ services:
         condition: service_healthy
 
 volumes:
+  postgres_data:
   redis_data:

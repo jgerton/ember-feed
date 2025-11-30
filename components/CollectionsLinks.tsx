@@ -34,9 +34,36 @@ export default function CollectionsLinks({ onNavigate, activeView }: Collections
   ]
 
   return (
-    <div className="glass-medium rounded-2xl p-5">
-      <h2 className="text-lg font-bold text-neutral-50 mb-3">Collections</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+    <div className="glass-medium rounded-2xl p-3 sm:p-5">
+      <h2 className="text-base sm:text-lg font-bold text-neutral-50 mb-3">Collections</h2>
+      {/* Mobile: horizontal scroll, Desktop: grid */}
+      <div className="sm:hidden overflow-x-auto -mx-3 px-3 pb-2 scrollbar-hide">
+        <div className="flex gap-2" style={{ width: 'max-content' }}>
+          {collections.map((collection) => (
+            <button
+              key={collection.name}
+              onClick={() => onNavigate(collection.view)}
+              className={`flex flex-col items-center justify-center min-w-[72px] p-3 rounded-lg
+                       border transition-all duration-200 group
+                       ${activeView === collection.view
+                         ? 'bg-ember-500/20 border-ember-500/50'
+                         : 'bg-neutral-800/30 hover:bg-neutral-700/40 border-neutral-700/30 hover:border-ember-500/30'
+                       }`}
+            >
+              <span className="text-xl mb-1 group-hover:scale-110 transition-transform">
+                {collection.icon}
+              </span>
+              <span className={`text-[11px] text-center font-medium leading-tight whitespace-nowrap ${
+                activeView === collection.view ? 'text-ember-400' : 'text-neutral-300'
+              }`}>
+                {collection.name}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Desktop: grid layout */}
+      <div className="hidden sm:grid grid-cols-4 lg:grid-cols-8 gap-2">
         {collections.map((collection) => (
           <button
             key={collection.name}
