@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import TodaysHighlightsWidget from '@/components/TodaysHighlightsWidget'
 
 interface Article {
   id: string
@@ -132,43 +133,11 @@ export default function DailyDigest() {
 
       {isExpanded && (
         <div className="space-y-6">
-          {/* Top Articles */}
-          {digest.topArticles.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-ember-400 mb-3">Top Stories Today</h3>
-              <div className="space-y-2">
-                {digest.topArticles.map((article, idx) => (
-                  <a
-                    key={article.id}
-                    href={article.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block glass-medium rounded-lg p-3 hover:glass-light transition-all group"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="text-ember-500 font-bold text-lg">{idx + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-neutral-100 font-medium group-hover:text-ember-400 transition-colors line-clamp-2">
-                          {article.title}
-                        </h4>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-neutral-400">
-                          <span>{article.source}</span>
-                          <span>•</span>
-                          <span>Score: {article.score}</span>
-                          {article.topics && article.topics.length > 0 && (
-                            <>
-                              <span>•</span>
-                              <span className="text-ember-500">{article.topics[0].topic.name}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Articles with Infinite Scroll and Filters */}
+          <div>
+            <h3 className="text-lg font-semibold text-ember-400 mb-3">Articles</h3>
+            <TodaysHighlightsWidget />
+          </div>
 
           {/* Unread Todos */}
           {digest.unreadTodos.length > 0 && (

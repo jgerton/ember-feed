@@ -6,12 +6,14 @@ import {
   recordFeedFailure,
   initializeDefaultFeeds
 } from './feedHealthService'
+import { detectPlatform, parseWithStrategy, type ExtendedRssItem } from './feedParsers'
 
 const parser = new Parser({
   customFields: {
     item: [
       ['media:content', 'media'],
       ['content:encoded', 'contentEncoded'],
+      ['dc:creator', 'dc:creator'],
     ]
   }
 })
@@ -22,6 +24,10 @@ interface FeedItem {
   contentSnippet?: string
   isoDate?: string
   source: string
+  // New optional fields from enhanced parsing
+  imageUrl?: string | null
+  tags?: string[]
+  author?: string
 }
 
 export async function fetchAllFeeds(): Promise<FeedItem[]> {
@@ -38,13 +44,30 @@ export async function fetchAllFeeds(): Promise<FeedItem[]> {
     try {
       const parsed = await parser.parseURL(feed.url)
 
-      const items = parsed.items.slice(0, 10).map(item => ({
-        title: item.title || 'Untitled',
-        link: item.link || '',
-        contentSnippet: item.contentSnippet || item.content?.substring(0, 200) || '',
-        isoDate: item.isoDate,
-        source: feed.name
-      }))
+      // Detect platform for strategy-based parsing
+      const platform = detectPlatform(feed.url, parsed.generator)
+
+      const items = parsed.items.slice(0, 10).map(item => {
+        // Use platform-specific parser for enhanced extraction
+        const article = parseWithStrategy(
+          item as ExtendedRssItem,
+          { title: parsed.title, link: parsed.link, generator: parsed.generator },
+          platform
+        )
+
+        // Map to FeedItem interface (backwards compatible)
+        return {
+          title: article.title,
+          link: article.link,
+          contentSnippet: article.summary,
+          isoDate: article.publishedAt?.toISOString(),
+          source: feed.name,
+          // New fields from enhanced parsing
+          imageUrl: article.imageUrl,
+          tags: article.tags,
+          author: article.author,
+        }
+      })
 
       allItems.push(...items)
 

@@ -146,29 +146,24 @@ test.describe('Responsive Design', () => {
       await expect(headerFlex).toBeVisible()
     })
 
-    test('collections scrolls horizontally on mobile', async ({ page }) => {
+    test('collections widget accessible on mobile', async ({ page }) => {
       // Set mobile viewport
       await page.setViewportSize({ width: 375, height: 667 })
       await page.goto('/')
 
-      // Collections container should be visible
-      const collections = page.locator('text=Collections').first()
+      // Collections widget should be visible in sidebar (now stacks on mobile)
+      const collections = page.locator('button:has-text("Collections")')
       await expect(collections).toBeVisible()
-
-      // Mobile scroll container should exist
-      const scrollContainer = page.locator('.overflow-x-auto')
-      const count = await scrollContainer.count()
-      expect(count).toBeGreaterThan(0)
     })
 
-    test('daily summary bar wraps on mobile', async ({ page }) => {
+    test('daily overview widget accessible on mobile', async ({ page }) => {
       // Set mobile viewport
       await page.setViewportSize({ width: 375, height: 667 })
       await page.goto('/')
 
-      // Summary bar stats should be visible
-      const stats = page.locator('text=articles')
-      await expect(stats.first()).toBeVisible()
+      // Daily Overview widget should be visible in sidebar (now stacks on mobile)
+      const dailyOverview = page.locator('text=Daily Overview')
+      await expect(dailyOverview).toBeVisible()
     })
 
     test('404 page renders correctly', async ({ page }) => {

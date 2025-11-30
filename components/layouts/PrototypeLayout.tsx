@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import NewsWidget from '@/components/NewsWidget'
 import TodaysPriorities from '@/components/TodaysPriorities'
 import TrendingTopics from '@/components/TrendingTopics'
-import CollectionsLinks, { CollectionView } from '@/components/CollectionsLinks'
+import { CollectionView } from '@/components/CollectionsLinks'
+import CollectionsWidget from '@/components/CollectionsWidget'
 import DailyDigest from '@/components/DailyDigest'
-import DailySummary from '@/components/DailySummary'
 import SearchBar from '@/components/SearchBar'
 import DeveloperJournal from '@/components/DeveloperJournal'
 import FeedAdmin from '@/components/FeedAdmin'
@@ -17,7 +17,7 @@ import ReadLaterView from '@/components/views/ReadLaterView'
 import ThoughtsView from '@/components/views/ThoughtsView'
 import TopicsView from '@/components/views/TopicsView'
 import TrendingDashboard from '@/components/TrendingDashboard'
-import DailySummaryBar from '@/components/DailySummaryBar'
+import DailyOverviewWidget from '@/components/DailyOverviewWidget'
 import QuickActions from '@/components/QuickActions'
 import TasksWidget from '@/components/TasksWidget'
 import ThoughtCaptureModal from '@/components/ThoughtCaptureModal'
@@ -139,9 +139,6 @@ export default function PrototypeLayout() {
 
   return (
     <div className="space-y-6">
-      {/* Daily Summary Bar - Above Everything */}
-      <DailySummaryBar />
-
       {/* Main Grid: Content Area (left) + Sidebar (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content Area - 70% width (2 columns) */}
@@ -160,6 +157,9 @@ export default function PrototypeLayout() {
             }}
             onReviewIdeas={() => console.log('Review Ideas - TODO: Open form')}
           />
+
+          {/* Daily Overview - Stats Summary */}
+          <DailyOverviewWidget />
 
           {/* Today's Priorities */}
           <TodaysPriorities
@@ -221,11 +221,11 @@ export default function PrototypeLayout() {
               setMainContent('topics')
             }}
           />
+
+          {/* Collections Navigation */}
+          <CollectionsWidget onNavigate={handleNavigate} activeView={mainContent} />
         </div>
       </div>
-
-      {/* Footer: Collections Links */}
-      <CollectionsLinks onNavigate={handleNavigate} activeView={mainContent} />
 
       {/* Thought Capture Modal - Available globally */}
       <ThoughtCaptureModal
