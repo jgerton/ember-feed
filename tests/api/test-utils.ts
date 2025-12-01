@@ -145,3 +145,116 @@ export function assertArrayShape(arr: any[], expectedKeys: string[]) {
 export function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
+
+/**
+ * Clean up test data from the database.
+ * Calls the /api/test/cleanup endpoint which requires TEST_MODE=true.
+ *
+ * @param request - Playwright APIRequestContext
+ * @param options - Cleanup options
+ * @param options.includeRedis - Also flush Redis test database (default: false)
+ * @param options.since - Only delete records created after this timestamp (preserves existing data)
+ * @param options.mode - 'all' wipes everything, 'since' uses the timestamp (default: 'all')
+ * @throws Error if cleanup fails or TEST_MODE is not enabled
+ */
+export async function cleanupTestData(
+  request: APIRequestContext,
+  options: { includeRedis?: boolean; since?: string; mode?: 'all' | 'since' } = {}
+) {
+  const { includeRedis = false, since, mode } = options
+
+  const response = await request.post(`${API_BASE_URL}/test/cleanup`, {
+    data: { includeRedis, since, mode },
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+
+  if (!response.ok()) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(
+      `Test cleanup failed (${response.status()}): ${errorData.error || errorData.message || 'Unknown error'}`
+    )
+  }
+
+  return response.json()
+}
+
+/**
+ * Creates a test isolation context that tracks the start time and provides
+ * cleanup that only removes records created during the test.
+ *
+ * @example
+ * test.describe('My test suite', () => {
+ *   let cleanup: TestCleanupContext
+ *
+ *   test.beforeAll(async ({ request }) => {
+ *     cleanup = createTestCleanup()
+ *   })
+ *
+ *   test.afterAll(async ({ request }) => {
+ *     await cleanup.run(request)
+ *   })
+ *
+ *   test('creates data', async ({ request }) => {
+ *     // ... test that creates records ...
+ *   })
+ * })
+ */
+export interface TestCleanupContext {
+  startTime: string
+  run: (request: APIRequestContext, options?: { includeRedis?: boolean }) => Promise<any>
+}
+
+export function createTestCleanup(): TestCleanupContext {
+  const startTime = new Date().toISOString()
+
+  return {
+    startTime,
+    run: async (request: APIRequestContext, options: { includeRedis?: boolean } = {}) => {
+      return cleanupTestData(request, {
+        since: startTime,
+        includeRedis: options.includeRedis,
+      })
+    },
+  }
+}
+
+/**
+ * Seed the test database with baseline data.
+ * Calls the /api/test/seed endpoint which requires TEST_MODE=true.
+ *
+ * @param request - Playwright APIRequestContext
+ * @param options - What to seed
+ * @param options.feeds - Seed RSS feed sources (default: true)
+ * @param options.topics - Seed topic categories (default: true)
+ * @param options.settings - Seed default settings (default: true)
+ * @param options.articles - Seed sample articles (default: false)
+ */
+export async function seedTestData(
+  request: APIRequestContext,
+  options: {
+    feeds?: boolean
+    topics?: boolean
+    settings?: boolean
+    articles?: boolean
+  } = {}
+) {
+  const { feeds = true, topics = true, settings = true, articles = false } = options
+
+  const response = await request.post(`${API_BASE_URL}/test/seed`, {
+    data: { feeds, topics, settings, articles },
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!response.ok()) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(
+      `Test seed failed (${response.status()}): ${errorData.error || errorData.message || 'Unknown error'}`
+    )
+  }
+
+  return response.json()
+}
