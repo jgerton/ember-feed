@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { requireN8nAuth } from '@/lib/n8n-auth'
 
 /**
  * GET /api/n8n/feeds
@@ -12,6 +13,10 @@ import { prisma } from '@/lib/db'
  * - priority_min: minimum priority (0-100)
  */
 export async function GET(request: NextRequest) {
+  // Validate API key
+  const authError = requireN8nAuth(request)
+  if (authError) return authError
+
   try {
     const searchParams = request.nextUrl.searchParams
     const type = searchParams.get('type')

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { requireN8nAuth } from '@/lib/n8n-auth'
 
 /**
  * Article data from n8n workflow
@@ -22,6 +23,10 @@ interface IngestArticle {
  * Accepts articles from n8n workflows and upserts them to the database
  */
 export async function POST(request: Request) {
+  // Validate API key
+  const authError = requireN8nAuth(request)
+  if (authError) return authError
+
   try {
     const body = await request.json()
     const { source, workflowId, articles } = body as {

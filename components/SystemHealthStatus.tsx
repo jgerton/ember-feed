@@ -3,6 +3,17 @@
 import { useEffect, useState, useRef } from 'react'
 import * as d3 from 'd3'
 
+interface SubsystemHealth {
+  status: 'green' | 'yellow' | 'red'
+  score: number
+  issues: string[]
+}
+
+interface N8nSubsystemHealth extends SubsystemHealth {
+  errorCount: number
+  lastSuccessAt?: string
+}
+
 interface SystemHealthData {
   overall: {
     status: 'green' | 'yellow' | 'red'
@@ -11,10 +22,11 @@ interface SystemHealthData {
     direction: 'up' | 'down' | 'stable'
   }
   subsystems: {
-    feeds: { status: 'green' | 'yellow' | 'red'; score: number; issues: string[] }
-    freshness: { status: 'green' | 'yellow' | 'red'; score: number; issues: string[] }
-    engagement: { status: 'green' | 'yellow' | 'red'; score: number; issues: string[] }
-    tasks: { status: 'green' | 'yellow' | 'red'; score: number; issues: string[] }
+    feeds: SubsystemHealth
+    freshness: SubsystemHealth
+    engagement: SubsystemHealth
+    tasks: SubsystemHealth
+    n8n?: N8nSubsystemHealth
   }
   insights: Array<{ type: 'success' | 'warning' | 'error'; message: string; action: string | null }>
   quickActions: Array<{ label: string; endpoint?: string; url?: string }>
@@ -126,6 +138,14 @@ export default function SystemHealthStatus({ mode }: SystemHealthStatusProps) {
                 score={healthData.subsystems.tasks.score}
                 issues={healthData.subsystems.tasks.issues}
               />
+              {healthData.subsystems.n8n && (
+                <SubsystemRow
+                  label="n8n Workflows"
+                  status={healthData.subsystems.n8n.status}
+                  score={healthData.subsystems.n8n.score}
+                  issues={healthData.subsystems.n8n.issues}
+                />
+              )}
             </div>
 
             {/* Quick Actions */}

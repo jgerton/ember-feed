@@ -1,0 +1,249 @@
+{
+  "name": "Feed Collector",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "feed-collector",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-manual-trigger",
+      "name": "Manual Trigger (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [80, 100],
+      "webhookId": "feed-collector-webhook"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "8db22cf3-4c00-4c6a-96a4-59e619b2f7c7",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [80, 288]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.EMBER_API_URL || 'http://host.docker.internal:3002' }}/api/n8n/feeds?status=active",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $env.EMBER_N8N_API_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8bba0ab4-96ea-4397-9996-b64f8952d542",
+      "name": "Get Active Feeds",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [304, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check feeds and route by type\nconst data = $input.first().json;\nconst feeds = data.feeds || [];\n\nif (feeds.length === 0) {\n  return [{ json: { _route: 'no_feeds', message: 'No active feeds found' } }];\n}\n\nconst rssFeeds = feeds.filter(f => f.type === 'rss');\nconst substackFeeds = feeds.filter(f => f.type === 'substack');\nconst mediumFeeds = feeds.filter(f => f.type === 'medium');\nconst redditFeeds = feeds.filter(f => f.type === 'reddit');\nconst hnFeeds = feeds.filter(f => f.type === 'hackernews');\nconst otherFeeds = feeds.filter(f => !['rss', 'substack', 'medium', 'reddit', 'hackernews'].includes(f.type));\n\nreturn [{\n  json: {\n    _route: 'has_feeds',\n    rssFeeds,\n    substackFeeds,\n    mediumFeeds,\n    redditFeeds,\n    hnFeeds,\n    otherFeeds,\n    totalFeeds: feeds.length\n  }\n}];"
+      },
+      "id": "c954539c-5e8e-4cd0-8a9f-765fe23e28cb",
+      "name": "Route Feeds by Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [528, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nif (input._route === 'no_feeds') {\n  return [{ json: input }];\n}\n\nconst rssFeeds = input.rssFeeds || [];\nif (rssFeeds.length === 0) {\n  return [{ json: { ...input, rssArticles: [] } }];\n}\n\nconst feedsToProcess = rssFeeds.map(f => ({\n  feedId: f.id,\n  feedName: f.name,\n  url: f.url,\n  type: 'rss'\n}));\n\nreturn [{ json: { ...input, feedsToProcess } }];"
+      },
+      "id": "a32c95dd-aad4-4c39-bad0-1f15b2e40279",
+      "name": "Prepare RSS Feeds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [752, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nif (input._route === 'no_feeds' || !input.feedsToProcess) {\n  return [{ json: { ...input, articles: [] } }];\n}\n\nreturn [{ json: { ...input, feedsToProcess: input.feedsToProcess } }];"
+      },
+      "id": "8c372025-a402-4b92-89f3-60b0944b1d98",
+      "name": "Fetch RSS Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [976, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nif (input._route === 'no_feeds') {\n  return [{ json: { status: 'no_feeds', articles: [], count: 0 } }];\n}\n\nconst normalized = [];\nconst feeds = input.feedsToProcess || [];\nfor (const feed of feeds) {\n  normalized.push({\n    title: '[Pending] ' + feed.feedName,\n    url: feed.url,\n    description: 'RSS feed pending parse',\n    source: feed.type,\n    feedId: feed.feedId,\n    publishedAt: new Date().toISOString(),\n    author: null,\n    imageUrl: null,\n    tags: [],\n    score: null\n  });\n}\n\nreturn [{ json: { articles: normalized, count: normalized.length } }];"
+      },
+      "id": "8c2010cc-1aac-4793-8038-95307a04762a",
+      "name": "Normalize Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst articles = input.articles || [];\n\nif (articles.length === 0) {\n  return [{ json: { status: 'no_articles', articles: [], count: 0 } }];\n}\n\nconst seen = new Set();\nconst unique = [];\n\nfor (const article of articles) {\n  const url = article.url;\n  if (url && !seen.has(url)) {\n    seen.add(url);\n    unique.push(article);\n  }\n}\n\nreturn [{ json: { articles: unique, count: unique.length } }];"
+      },
+      "id": "3cb18d2a-9d5d-44d4-9297-61fff533f0f5",
+      "name": "Deduplicate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1424, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EMBER_API_URL || 'http://host.docker.internal:3002' }}/api/n8n/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $env.EMBER_N8N_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n', workflowId: $workflow.id, articles: $json.articles }) }}",
+        "options": {}
+      },
+      "id": "d7dc2fa8-8f37-41e0-b70b-78709c323eec",
+      "name": "Push to Ember Feed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1648, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst isError = input.error || input.statusCode >= 400;\n\nreturn [{ json: {\n  status: isError ? 'error' : 'complete',\n  articlesIngested: input.inserted || input.count || 0,\n  executionId: $execution.id\n} }];"
+      },
+      "id": "78c24139-56df-4e76-9ab7-f3685db047f7",
+      "name": "Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1872, 200]
+    }
+  ],
+  "connections": {
+    "Manual Trigger (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Get Active Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Active Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Feeds": {
+      "main": [
+        [
+          {
+            "node": "Route Feeds by Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Feeds by Type": {
+      "main": [
+        [
+          {
+            "node": "Prepare RSS Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare RSS Feeds": {
+      "main": [
+        [
+          {
+            "node": "Fetch RSS Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch RSS Data": {
+      "main": [
+        [
+          {
+            "node": "Normalize Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Articles": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "Push to Ember Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push to Ember Feed": {
+      "main": [
+        [
+          {
+            "node": "Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

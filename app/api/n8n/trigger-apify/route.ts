@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireN8nAuth } from '@/lib/n8n-auth'
 
 /**
  * POST /api/n8n/trigger-apify
@@ -11,6 +12,10 @@ import { NextResponse } from 'next/server'
  * Cost: Apify runs cost ~$0.03 per run (within free tier limits)
  */
 export async function POST(request: Request) {
+  // Validate API key
+  const authError = requireN8nAuth(request)
+  if (authError) return authError
+
   try {
     const body = await request.json()
     const { feedIds, scrapeAll } = body as {

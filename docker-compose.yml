@@ -63,6 +63,8 @@ services:
       - REDIS_PORT=6379
       # Aggregator service
       - AGGREGATOR_URL=http://aggregator:8000
+      # n8n Integration
+      - N8N_API_KEY=${N8N_API_KEY:-}
     stdin_open: true  # Keep container running for interactive debugging
     tty: true
     restart: unless-stopped
@@ -140,6 +142,7 @@ services:
       - DB_POSTGRESDB_PASSWORD=ember_dev
       # Ember Feed integration
       - EMBER_API_URL=http://app:3000
+      - EMBER_N8N_API_KEY=${N8N_API_KEY:-}
       - RSSHUB_URL=http://rsshub:1200
       # Apify (optional, for complex scraping)
       - APIFY_API_TOKEN=${APIFY_API_TOKEN:-}

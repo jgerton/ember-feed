@@ -32,7 +32,10 @@ export async function GET() {
       yesterdayActivity,
       incompleteTodos,
       overdueTodos,
-      totalTodos
+      totalTodos,
+      n8nRecentErrors,
+      n8nUnresolvedErrors,
+      n8nLastSuccess
     ] = await Promise.all([
       // Feed health check
       prisma.feed.findMany({
@@ -92,7 +95,33 @@ export async function GET() {
         }
       }),
       // Total todos
-      prisma.todo.count()
+      prisma.todo.count(),
+      // n8n errors in last 24 hours
+      prisma.n8nError.count({
+        where: {
+          createdAt: {
+            gte: twentyFourHoursAgo
+          }
+        }
+      }),
+      // n8n unresolved errors
+      prisma.n8nError.count({
+        where: {
+          resolved: false
+        }
+      }),
+      // Last successful n8n workflow (most recent resolved or any success indicator)
+      prisma.n8nError.findFirst({
+        where: {
+          resolved: true
+        },
+        orderBy: {
+          resolvedAt: 'desc'
+        },
+        select: {
+          resolvedAt: true
+        }
+      })
     ])
 
     // Calculate Feed Health Score
@@ -107,12 +136,20 @@ export async function GET() {
     // Calculate Task Status Score
     const taskResult = calculateTaskStatus(incompleteTodos, overdueTodos, totalTodos)
 
+    // Calculate n8n Health Score
+    const n8nResult = calculateN8nHealth(
+      n8nRecentErrors,
+      n8nUnresolvedErrors,
+      n8nLastSuccess?.resolvedAt ?? null
+    )
+
     // Calculate Overall Health
     const subsystemScores = [
       feedHealthResult.score,
       freshnessResult.score,
       engagementResult.score,
-      taskResult.score
+      taskResult.score,
+      n8nResult.score
     ]
 
     const overallScore = Math.round(
@@ -120,9 +157,9 @@ export async function GET() {
     )
 
     // Determine overall status
-    const hasRed = [feedHealthResult, freshnessResult, engagementResult, taskResult]
+    const hasRed = [feedHealthResult, freshnessResult, engagementResult, taskResult, n8nResult]
       .some(r => r.status === 'red')
-    const hasYellow = [feedHealthResult, freshnessResult, engagementResult, taskResult]
+    const hasYellow = [feedHealthResult, freshnessResult, engagementResult, taskResult, n8nResult]
       .some(r => r.status === 'yellow')
 
     const overallStatus = hasRed ? 'red' : hasYellow ? 'yellow' : 'green'
@@ -139,14 +176,16 @@ export async function GET() {
       feedHealth: feedHealthResult,
       freshness: freshnessResult,
       engagement: engagementResult,
-      tasks: taskResult
+      tasks: taskResult,
+      n8n: n8nResult
     })
 
     const quickActions = generateQuickActions({
       feedHealth: feedHealthResult,
       freshness: freshnessResult,
       engagement: engagementResult,
-      tasks: taskResult
+      tasks: taskResult,
+      n8n: n8nResult
     })
 
     return NextResponse.json({
@@ -176,6 +215,13 @@ export async function GET() {
           status: taskResult.status,
           score: taskResult.score,
           issues: taskResult.issues
+        },
+        n8n: {
+          status: n8nResult.status,
+          score: n8nResult.score,
+          issues: n8nResult.issues,
+          errorCount: n8nResult.errorCount,
+          lastSuccessAt: n8nResult.lastSuccessAt
         }
       },
       insights,
@@ -328,6 +374,51 @@ function calculateTaskStatus(incomplete: number, overdue: number, total: number)
 }
 
 /**
+ * Calculate n8n workflow health based on error counts
+ */
+function calculateN8nHealth(
+  recentErrors: number,
+  unresolvedErrors: number,
+  lastSuccessAt: Date | null
+) {
+  const issues: string[] = []
+
+  let status: 'green' | 'yellow' | 'red'
+  let score: number
+
+  // High unresolved error count is critical
+  if (unresolvedErrors > 5) {
+    status = 'red'
+    score = 30
+    issues.push(`${unresolvedErrors} unresolved workflow errors`)
+  } else if (unresolvedErrors > 2 || recentErrors > 3) {
+    status = 'yellow'
+    score = 60
+    if (unresolvedErrors > 0) {
+      issues.push(`${unresolvedErrors} unresolved errors`)
+    }
+    if (recentErrors > 3) {
+      issues.push(`${recentErrors} errors in last 24h`)
+    }
+  } else if (unresolvedErrors > 0) {
+    status = 'yellow'
+    score = 80
+    issues.push(`${unresolvedErrors} unresolved error${unresolvedErrors > 1 ? 's' : ''}`)
+  } else {
+    status = 'green'
+    score = 100 - (recentErrors * 10) // Small penalty for recent errors
+  }
+
+  return {
+    status,
+    score: Math.max(0, score),
+    issues,
+    errorCount: unresolvedErrors,
+    lastSuccessAt: lastSuccessAt?.toISOString() ?? null
+  }
+}
+
+/**
  * Generate actionable insights based on health status
  */
 function generateInsights(health: {
@@ -335,6 +426,7 @@ function generateInsights(health: {
   freshness: { status: string; issues: string[] }
   engagement: { status: string; issues: string[] }
   tasks: { status: string; issues: string[] }
+  n8n: { status: string; issues: string[] }
 }) {
   const insights: Array<{ type: 'success' | 'warning' | 'error'; message: string; action: string | null }> = []
 
@@ -374,6 +466,21 @@ function generateInsights(health: {
     })
   }
 
+  // n8n workflow insights
+  if (health.n8n.status === 'red') {
+    insights.push({
+      type: 'error',
+      message: health.n8n.issues[0] || 'Workflow errors need attention',
+      action: 'View n8n Errors'
+    })
+  } else if (health.n8n.status === 'yellow') {
+    insights.push({
+      type: 'warning',
+      message: health.n8n.issues[0] || 'Some workflow issues',
+      action: 'View n8n Errors'
+    })
+  }
+
   // Success message if all green
   if (insights.length === 0) {
     insights.push({
@@ -394,6 +501,7 @@ function generateQuickActions(health: {
   freshness: { status: string }
   engagement: { status: string }
   tasks: { status: string }
+  n8n: { status: string }
 }) {
   const actions: Array<{ label: string; endpoint?: string; url?: string }> = []
 
@@ -411,6 +519,10 @@ function generateQuickActions(health: {
 
   if (health.engagement.status !== 'green') {
     actions.push({ label: 'Browse Feed', url: '/#news-feed' })
+  }
+
+  if (health.n8n.status !== 'green') {
+    actions.push({ label: 'View n8n Errors', url: '/settings/n8n-errors' })
   }
 
   return actions

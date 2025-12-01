@@ -1,0 +1,147 @@
+{
+  "name": "Error Reporter",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-1",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format error data from input\nconst input = $input.first().json;\n\nconst errorData = {\n  workflowId: input.workflowId || $execution.workflow.id,\n  workflowName: input.workflowName || $execution.workflow.name,\n  executionId: input.executionId || $execution.id,\n  nodeId: input.nodeId || null,\n  nodeName: input.nodeName || null,\n  errorType: classifyError(input.errorMessage || input.error || 'Unknown error'),\n  errorMessage: input.errorMessage || input.error || 'Unknown error',\n  feedId: input.feedId || null,\n  context: input.context || {}\n};\n\nfunction classifyError(message) {\n  const msg = message.toLowerCase();\n  if (msg.includes('timeout') || msg.includes('timed out')) return 'timeout';\n  if (msg.includes('rate limit') || msg.includes('429')) return 'rate_limit';\n  if (msg.includes('parse') || msg.includes('xml') || msg.includes('json')) return 'parse_error';\n  if (msg.includes('404') || msg.includes('not found')) return 'not_found';\n  if (msg.includes('401') || msg.includes('403') || msg.includes('unauthorized')) return 'auth_error';\n  if (msg.includes('500') || msg.includes('502') || msg.includes('503')) return 'server_error';\n  if (msg.includes('network') || msg.includes('connect')) return 'network_error';\n  return 'api_error';\n}\n\nreturn [errorData];"
+      },
+      "id": "code-1",
+      "name": "Format Error Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EMBER_API_URL || 'http://host.docker.internal:3002' }}/api/n8n/errors",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $env.EMBER_N8N_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "http-1",
+      "name": "Report Error to Ember Feed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Return result\nconst input = $input.first().json;\nreturn [{\n  json: {\n    status: input.success ? 'reported' : 'failed',\n    errorId: input.errorId || null\n  }\n}];"
+      },
+      "id": "result",
+      "name": "Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Error Reporter Sub-Workflow\n\nThis workflow is called by other workflows when errors occur.\nIt formats and sends error data to Ember Feed for tracking.\n\n**Called by:**\n- Feed Collector\n- Feed Health Check\n- Apify Scraper\n\n**Error Types Detected:**\n- timeout, rate_limit, parse_error\n- not_found, auth_error, server_error\n- network_error, api_error",
+        "width": 300,
+        "height": 220
+      },
+      "id": "note-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [180, 60]
+    },
+    {
+      "parameters": {
+        "content": "**Trigger**\n\nCalled as sub-workflow by other n8n workflows via Execute Workflow node.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-trigger",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Format & Classify**\n\nExtracts error info and auto-classifies error type based on message content.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-format",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [420, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Report to API**\n\nPOSTs error to /api/n8n/errors for System Health tracking in Ember Feed.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-report",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [640, 420]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Error Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Data": {
+      "main": [
+        [
+          {
+            "node": "Report Error to Ember Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Error to Ember Feed": {
+      "main": [
+        [
+          {
+            "node": "Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

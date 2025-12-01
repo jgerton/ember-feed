@@ -1,0 +1,375 @@
+{
+  "name": "Feed Health Check",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-1",
+      "name": "Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.EMBER_API_URL || 'http://app:3000' }}/api/n8n/feeds",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "failing,quarantined"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-get-failing",
+      "name": "Get Failing Feeds",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.feeds?.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-feeds",
+      "name": "Has Failing Feeds?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "feeds",
+        "options": {}
+      },
+      "id": "split-feeds",
+      "name": "Split Feeds",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 15000,
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "http-test-feed",
+      "name": "Test Feed URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 200],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Check test results and prepare update data\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const feed = item.json;\n  const statusCode = feed.statusCode || 0;\n  const isSuccess = statusCode >= 200 && statusCode < 400;\n  \n  results.push({\n    feedId: feed.id,\n    feedName: feed.name,\n    feedUrl: feed.url,\n    testResult: isSuccess ? 'recovered' : 'still_failing',\n    statusCode: statusCode,\n    newStatus: isSuccess ? 'active' : 'failing'\n  });\n}\n\nreturn results;"
+      },
+      "id": "analyze-results",
+      "name": "Analyze Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 200]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "value": "recovered",
+              "output": 0
+            },
+            {
+              "value": "still_failing",
+              "output": 1
+            }
+          ]
+        },
+        "fallbackOutput": "extra",
+        "options": {}
+      },
+      "id": "switch-result",
+      "name": "Route by Result",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1570, 200]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.EMBER_API_URL || 'http://app:3000' }}/api/feeds/{{ $json.feedId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"status\": \"active\",\n  \"consecutiveFailures\": 0\n}"
+      },
+      "id": "update-recovered",
+      "name": "Mark as Recovered",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1790, 100],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.EMBER_API_URL || 'http://app:3000' }}/api/feeds/{{ $json.feedId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"status\": \"failing\",\n  \"lastHealthCheck\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "id": "update-still-failing",
+      "name": "Update Still Failing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1790, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "merge-results",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2010, 200]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Summarize health check results\nconst items = $input.all();\n\nconst recovered = items.filter(i => i.json.testResult === 'recovered').length;\nconst stillFailing = items.filter(i => i.json.testResult === 'still_failing').length;\n\nreturn [{\n  status: 'complete',\n  feedsChecked: items.length,\n  recovered: recovered,\n  stillFailing: stillFailing,\n  timestamp: new Date().toISOString()\n}];"
+      },
+      "id": "summarize",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2230, 200]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "no_failing_feeds"
+            },
+            {
+              "name": "message",
+              "value": "No failing feeds to check"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-no-failing",
+      "name": "No Failing Feeds",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [910, 400]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $env.ERROR_REPORTER_WORKFLOW_ID || 'error-reporter' }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "call-error-reporter",
+      "name": "Report Error",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1350, 400]
+    }
+  ],
+  "connections": {
+    "Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Get Failing Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Failing Feeds": {
+      "main": [
+        [
+          {
+            "node": "Has Failing Feeds?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Failing Feeds?": {
+      "main": [
+        [
+          {
+            "node": "Split Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Failing Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Feeds": {
+      "main": [
+        [
+          {
+            "node": "Test Feed URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Feed URL": {
+      "main": [
+        [
+          {
+            "node": "Analyze Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Results": {
+      "main": [
+        [
+          {
+            "node": "Route by Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Result": {
+      "main": [
+        [
+          {
+            "node": "Mark as Recovered",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Still Failing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Recovered": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Still Failing": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

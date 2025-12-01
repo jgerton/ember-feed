@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { requireN8nAuth } from '@/lib/n8n-auth'
 
 /**
  * Error report from n8n workflow
@@ -21,6 +22,10 @@ interface ErrorReport {
  * n8n reports workflow errors here for tracking
  */
 export async function POST(request: Request) {
+  // Validate API key
+  const authError = requireN8nAuth(request)
+  if (authError) return authError
+
   try {
     const body = (await request.json()) as ErrorReport
 
@@ -89,6 +94,10 @@ export async function POST(request: Request) {
  * - feedId: filter by related feed
  */
 export async function GET(request: NextRequest) {
+  // Validate API key
+  const authError = requireN8nAuth(request)
+  if (authError) return authError
+
   try {
     const searchParams = request.nextUrl.searchParams
     const resolved = searchParams.get('resolved')

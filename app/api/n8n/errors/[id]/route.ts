@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { requireN8nAuth } from '@/lib/n8n-auth'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -10,6 +11,10 @@ interface RouteParams {
  * Mark an error as resolved or update its status
  */
 export async function PATCH(request: Request, { params }: RouteParams) {
+  // Validate API key
+  const authError = requireN8nAuth(request)
+  if (authError) return authError
+
   try {
     const { id } = await params
     const body = await request.json()
@@ -55,6 +60,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
  * Get a specific error by ID
  */
 export async function GET(request: Request, { params }: RouteParams) {
+  // Validate API key
+  const authError = requireN8nAuth(request)
+  if (authError) return authError
+
   try {
     const { id } = await params
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import NewsWidget from '@/components/NewsWidget'
 import TodaysPriorities from '@/components/TodaysPriorities'
@@ -10,8 +10,8 @@ import CollectionsWidget from '@/components/CollectionsWidget'
 import DailyDigest from '@/components/DailyDigest'
 import SearchBar from '@/components/SearchBar'
 import DeveloperJournal from '@/components/DeveloperJournal'
-import FeedAdmin from '@/components/FeedAdmin'
 import AnalyticsDashboard from '@/components/AnalyticsDashboard'
+import SettingsView from '@/components/views/SettingsView'
 import RecommendationsView from '@/components/views/RecommendationsView'
 import ReadLaterView from '@/components/views/ReadLaterView'
 import ThoughtsView from '@/components/views/ThoughtsView'
@@ -31,13 +31,26 @@ import ThoughtCaptureModal from '@/components/ThoughtCaptureModal'
  * - Right Sidebar (30%): Today's Priorities, Ranked News, Trending Topics
  * - Footer: Collections Links navigation
  */
-export default function PrototypeLayout() {
+interface PrototypeLayoutProps {
+  requestedView?: CollectionView | null
+  onViewNavigated?: () => void
+}
+
+export default function PrototypeLayout({ requestedView, onViewNavigated }: PrototypeLayoutProps) {
   const router = useRouter()
   const [mainContent, setMainContent] = useState<CollectionView>('digest')
   const [isNewsExpanded, setIsNewsExpanded] = useState(false)
   const [isThoughtModalOpen, setIsThoughtModalOpen] = useState(false)
   const [thoughtArticleContext, setThoughtArticleContext] = useState<{id: string, title: string} | undefined>()
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
+
+  // Handle external navigation requests (e.g., from header gear icon)
+  useEffect(() => {
+    if (requestedView) {
+      setMainContent(requestedView)
+      onViewNavigated?.()
+    }
+  }, [requestedView, onViewNavigated])
 
   // Handle navigation - some views are separate pages
   const handleNavigate = (view: CollectionView) => {
@@ -108,10 +121,11 @@ export default function PrototypeLayout() {
             <DeveloperJournal />
           </div>
         )
-      case 'admin':
+      case 'settings':
         return (
           <div className="glass-medium rounded-2xl p-6 h-full">
-            <FeedAdmin />
+            <h2 className="text-2xl font-bold text-neutral-50 mb-6">Settings</h2>
+            <SettingsView />
           </div>
         )
       case 'analytics':

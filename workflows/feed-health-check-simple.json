@@ -1,0 +1,178 @@
+{
+  "name": "Feed Health Check",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-1",
+      "name": "Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:3002/api/n8n/feeds?status=failing",
+        "options": {}
+      },
+      "id": "http-get-failing",
+      "name": "Get Failing Feeds",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if we have failing feeds\nconst data = $input.first().json;\nconst feeds = data.feeds || [];\n\nif (feeds.length === 0) {\n  return [{ json: { status: 'no_failing_feeds', message: 'No failing feeds to check' } }];\n}\n\n// Return feeds for testing\nreturn feeds.map(feed => ({ json: feed }));"
+      },
+      "id": "code-check",
+      "name": "Check Failing Feeds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "http-test",
+      "name": "Test Feed URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analyze test results\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const statusCode = item.json.statusCode || 0;\n  const isSuccess = statusCode >= 200 && statusCode < 400;\n  \n  results.push({\n    feedId: item.json.id || 'unknown',\n    feedUrl: item.json.url || 'unknown',\n    testResult: isSuccess ? 'recovered' : 'still_failing',\n    statusCode: statusCode\n  });\n}\n\nconst recovered = results.filter(r => r.testResult === 'recovered').length;\nconst stillFailing = results.filter(r => r.testResult === 'still_failing').length;\n\nreturn [{\n  json: {\n    status: 'complete',\n    feedsChecked: results.length,\n    recovered: recovered,\n    stillFailing: stillFailing,\n    results: results\n  }\n}];"
+      },
+      "id": "analyze",
+      "name": "Analyze Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Feed Health Check Workflow\n\nThis workflow runs every 6 hours to check if failing feeds have recovered.\n\n**Flow:**\n1. Get feeds marked as 'failing' from Ember Feed\n2. Test each feed URL with HEAD request\n3. Analyze results (recovered vs still failing)\n4. Report summary\n\n**Purpose:**\nAutomatically detect when feeds come back online so they can be re-enabled.",
+        "width": 350,
+        "height": 200
+      },
+      "id": "note-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [180, 60]
+    },
+    {
+      "parameters": {
+        "content": "**Step 1: Schedule**\n\nRuns every 6 hours to periodically check failing feeds.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-schedule",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Step 2: Get Failing**\n\nFetches feeds with status='failing' from Ember Feed API.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-get",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [420, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Step 3: Test URLs**\n\nSends HEAD request to each feed URL to check if accessible (15s timeout).",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-test",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [860, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Step 4: Analyze**\n\nCounts recovered vs still failing feeds and prepares summary report.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-analyze",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1080, 420]
+    }
+  ],
+  "connections": {
+    "Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Get Failing Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Failing Feeds": {
+      "main": [
+        [
+          {
+            "node": "Check Failing Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Failing Feeds": {
+      "main": [
+        [
+          {
+            "node": "Test Feed URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Feed URL": {
+      "main": [
+        [
+          {
+            "node": "Analyze Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
