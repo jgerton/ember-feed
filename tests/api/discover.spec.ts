@@ -4,8 +4,25 @@ test.describe('Discovery API', () => {
   // Discovery endpoints may return 404 during route discovery or 503 if aggregator is down
   const acceptableStatuses = [200, 404, 503]
 
+  // Check if aggregator is available before running tests
+  let aggregatorAvailable = true
+
+  test.beforeAll(async ({ request }) => {
+    try {
+      const response = await request.get('/api/discover', { timeout: 3000 })
+      // 503 means route works but aggregator is down
+      aggregatorAvailable = response.status() !== 503
+    } catch {
+      aggregatorAvailable = false
+    }
+    if (!aggregatorAvailable) {
+      console.log('Aggregator service not available - discovery tests will be skipped')
+    }
+  })
+
   test.describe('GET /api/discover', () => {
     test('returns discovery data structure', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const response = await request.get('/api/discover')
       expect(acceptableStatuses).toContain(response.status())
 
@@ -21,6 +38,7 @@ test.describe('Discovery API', () => {
     })
 
     test('accepts categories parameter', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const response = await request.get('/api/discover?categories=technology,startup')
       expect(acceptableStatuses).toContain(response.status())
 
@@ -35,6 +53,7 @@ test.describe('Discovery API', () => {
     })
 
     test('accepts limit parameter', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const response = await request.get('/api/discover?limit=5')
       expect(acceptableStatuses).toContain(response.status())
 
@@ -47,6 +66,7 @@ test.describe('Discovery API', () => {
 
   test.describe('GET /api/discover/authors', () => {
     test('returns author discovery structure', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const response = await request.get('/api/discover/authors?category=technology')
       expect(acceptableStatuses).toContain(response.status())
 
@@ -60,6 +80,7 @@ test.describe('Discovery API', () => {
     })
 
     test('accepts category parameter', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const response = await request.get('/api/discover/authors?category=programming')
       expect(acceptableStatuses).toContain(response.status())
 
@@ -72,6 +93,7 @@ test.describe('Discovery API', () => {
 
   test.describe('GET /api/authors/search', () => {
     test('returns search results structure', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const response = await request.get('/api/authors/search?name=tech')
       expect(acceptableStatuses).toContain(response.status())
 
@@ -85,6 +107,7 @@ test.describe('Discovery API', () => {
     })
 
     test('rejects short name parameter', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const response = await request.get('/api/authors/search?name=a')
       // Either 400 (validation) or 404 (route not found during testing)
       expect([400, 404]).toContain(response.status())
@@ -96,16 +119,19 @@ test.describe('Discovery API', () => {
     })
 
     test('rejects missing name parameter', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const response = await request.get('/api/authors/search')
       expect([400, 404]).toContain(response.status())
     })
 
     test('accepts platform parameter', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const response = await request.get('/api/authors/search?name=tech&platform=substack')
       expect(acceptableStatuses).toContain(response.status())
     })
 
     test('rejects invalid platform parameter', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const response = await request.get('/api/authors/search?name=tech&platform=invalid')
       expect([400, 404]).toContain(response.status())
     })

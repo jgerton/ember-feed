@@ -12,9 +12,14 @@ const AGGREGATOR_URL = process.env.AGGREGATOR_URL || 'http://aggregator:8000'
 
 // GET /api/scheduler - Get scheduler status
 export async function GET() {
+  // Add timeout to prevent hanging when aggregator is unavailable
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
   try {
     const response = await fetch(`${AGGREGATOR_URL}/api/scheduler/status`, {
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: controller.signal
     })
 
     if (!response.ok) {
@@ -28,11 +33,19 @@ export async function GET() {
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return NextResponse.json(
+        { error: 'Service temporarily unavailable' },
+        { status: 503 }
+      )
+    }
     console.error('Scheduler status error:', error)
     return NextResponse.json(
       { error: 'Failed to connect to aggregator service' },
       { status: 503 }
     )
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
@@ -84,34 +97,49 @@ export async function POST(request: NextRequest) {
         )
     }
 
-    const fetchOptions: { method: string; headers: Record<string, string>; body?: string } = {
+    // Add timeout to prevent hanging when aggregator is unavailable
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
+    const fetchOptions: { method: string; headers: Record<string, string>; body?: string; signal: AbortSignal } = {
       method,
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      signal: controller.signal
     }
 
     if (payload) {
       fetchOptions.body = JSON.stringify(payload)
     }
 
-    const response = await fetch(`${AGGREGATOR_URL}${endpoint}`, fetchOptions)
+    try {
+      const response = await fetch(`${AGGREGATOR_URL}${endpoint}`, fetchOptions)
 
-    if (!response.ok) {
-      const error = await response.text()
+      if (!response.ok) {
+        const error = await response.text()
+        return NextResponse.json(
+          { error: `Scheduler ${action} failed`, details: error },
+          { status: response.status }
+        )
+      }
+
+      const data = await response.json()
+      return NextResponse.json({
+        action,
+        success: true,
+        ...data
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
       return NextResponse.json(
-        { error: `Scheduler ${action} failed`, details: error },
-        { status: response.status }
+        { error: 'Service temporarily unavailable' },
+        { status: 503 }
       )
     }
-
-    const data = await response.json()
-    return NextResponse.json({
-      action,
-      success: true,
-      ...data
-    })
-  } catch (error) {
     console.error('Scheduler control error:', error)
     return NextResponse.json(
       { error: 'Failed to control scheduler' },
