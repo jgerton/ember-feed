@@ -37,6 +37,8 @@ export default function FeedAdmin() {
   const [testingId, setTestingId] = useState<string | null>(null)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [scrapingId, setScrapingId] = useState<string | null>(null)
+  const [scrapingAll, setScrapingAll] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Add feed form state
@@ -219,6 +221,54 @@ export default function FeedAdmin() {
     }
   }
 
+  const scrapeFeed = async (feedId: string, feedName: string) => {
+    setScrapingId(feedId)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/n8n/trigger-apify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedIds: [feedId] })
+      })
+
+      const result = await res.json()
+
+      if (result.success) {
+        setMessage({ type: 'success', text: `Scrape triggered for "${feedName}". Check n8n for progress.` })
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Failed to trigger scrape' })
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to trigger scrape workflow' })
+    } finally {
+      setScrapingId(null)
+    }
+  }
+
+  const scrapeAllFeeds = async () => {
+    setScrapingAll(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/n8n/trigger-apify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scrapeAll: true })
+      })
+
+      const result = await res.json()
+
+      if (result.success) {
+        setMessage({ type: 'success', text: 'Scrape triggered for all newsletter feeds. Check n8n for progress.' })
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Failed to trigger scrape' })
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to trigger scrape workflow' })
+    } finally {
+      setScrapingAll(false)
+    }
+  }
+
   useEffect(() => {
     fetchHealth()
   }, [])
@@ -254,6 +304,14 @@ export default function FeedAdmin() {
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
             {showAddForm ? 'Cancel' : 'Add Feed'}
+          </button>
+          <button
+            onClick={scrapeAllFeeds}
+            disabled={scrapingAll}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+            title="Trigger n8n workflow to scrape all newsletter feeds"
+          >
+            {scrapingAll ? 'Scraping...' : 'Scrape All'}
           </button>
           <button
             onClick={fetchHealth}
@@ -560,6 +618,15 @@ export default function FeedAdmin() {
                   className="px-3 py-1 bg-ember-600 text-white rounded-lg hover:bg-ember-700 disabled:opacity-50 text-sm transition-colors"
                 >
                   {testingId === feed.id ? 'Testing...' : 'Test'}
+                </button>
+
+                <button
+                  onClick={() => scrapeFeed(feed.id, feed.name)}
+                  disabled={scrapingId === feed.id}
+                  className="px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm transition-colors"
+                  title="Trigger n8n Apify scraper for this feed"
+                >
+                  {scrapingId === feed.id ? 'Scraping...' : 'Scrape'}
                 </button>
 
                 {feed.status === 'quarantined' && (

@@ -1,0 +1,184 @@
+{
+  "name": "Apify Newsletter Scraper",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "apify-scraper",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "apify-scraper"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate webhook request\nconst body = $input.first().json.body || {};\nconst feedIds = body.feedIds || [];\nconst scrapeAll = body.scrapeAll || false;\n\nif (feedIds.length === 0 && !scrapeAll) {\n  return [{ json: { valid: false, error: 'Provide feedIds array or scrapeAll flag' } }];\n}\n\nreturn [{ json: { valid: true, feedIds, scrapeAll } }];"
+      },
+      "id": "validate",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:3002/api/n8n/feeds?type=newsletter,complex",
+        "options": {}
+      },
+      "id": "http-get-feeds",
+      "name": "Get Newsletter Feeds",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process feeds - placeholder for Apify integration\n// In production, this would call Apify API\nconst data = $input.first().json;\nconst feeds = data.feeds || [];\n\nif (feeds.length === 0) {\n  return [{ json: { \n    success: false, \n    message: 'No newsletter feeds found',\n    articlesFound: 0\n  } }];\n}\n\n// For now, return a placeholder response\n// Apify integration requires API credentials\nreturn [{ json: { \n  success: true, \n  message: 'Apify scraper placeholder - configure Apify credentials to enable',\n  feedsToScrape: feeds.length,\n  articlesFound: 0,\n  note: 'Add Apify HTTP Header Auth credentials to enable scraping'\n} }];"
+      },
+      "id": "apify-placeholder",
+      "name": "Apify Placeholder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1130, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Apify Newsletter Scraper\n\nThis workflow is triggered via webhook to scrape complex sources (newsletters, paywalled sites) using Apify.\n\n**Trigger:** POST to /webhook/apify-scraper\n\n**Request Body:**\n```json\n{\n  \"feedIds\": [\"id1\", \"id2\"],\n  \"scrapeAll\": false\n}\n```\n\n**Cost:** ~$0.03 per Apify run\n(Only runs when manually triggered)",
+        "width": 320,
+        "height": 240
+      },
+      "id": "note-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [180, 60]
+    },
+    {
+      "parameters": {
+        "content": "**Step 1: Webhook**\n\nReceives POST request from Ember Feed UI when user clicks 'Scrape Now'.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-webhook",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Step 2: Validate**\n\nChecks request has feedIds array or scrapeAll flag.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-validate",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [420, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Step 3: Get Feeds**\n\nFetches newsletter/complex feeds from Ember Feed API.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-get",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [640, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Step 4: Apify**\n\nCalls Apify Cheerio Scraper to extract articles. (Requires Apify credentials)",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-apify",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [860, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Setup Required:**\n\nTo enable Apify:\n1. Create Apify account\n2. Get API token\n3. Add HTTP Header Auth credential in n8n\n4. Replace placeholder node with Apify HTTP calls",
+        "width": 250,
+        "height": 140
+      },
+      "id": "note-setup",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [560, 60]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request": {
+      "main": [
+        [
+          {
+            "node": "Get Newsletter Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Newsletter Feeds": {
+      "main": [
+        [
+          {
+            "node": "Apify Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apify Placeholder": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

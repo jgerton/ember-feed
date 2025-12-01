@@ -11,6 +11,8 @@ services:
       POSTGRES_DB: ember_feed
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Init scripts run on first startup (creates n8n database)
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ember -d ember_feed"]
@@ -61,6 +63,8 @@ services:
       - REDIS_PORT=6379
       # Aggregator service
       - AGGREGATOR_URL=http://aggregator:8000
+      # n8n Integration
+      - N8N_API_KEY=${N8N_API_KEY:-}
     stdin_open: true  # Keep container running for interactive debugging
     tty: true
     restart: unless-stopped
@@ -111,6 +115,46 @@ services:
       redis:
         condition: service_healthy
 
+  # n8n Workflow Automation - Data collection layer
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ember-feed-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Basic auth for web UI
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=ember
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-ember_n8n_dev}
+      # Host configuration
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=${TZ:-America/New_York}
+      # PostgreSQL backend (uses separate n8n database)
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=ember
+      - DB_POSTGRESDB_PASSWORD=ember_dev
+      # Ember Feed integration
+      - EMBER_API_URL=http://app:3000
+      - EMBER_N8N_API_KEY=${N8N_API_KEY:-}
+      - RSSHUB_URL=http://rsshub:1200
+      # Apify (optional, for complex scraping)
+      - APIFY_API_TOKEN=${APIFY_API_TOKEN:-}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:
+  n8n_data:

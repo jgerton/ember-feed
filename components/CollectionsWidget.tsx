@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-export type CollectionView = 'journal' | 'recommendations' | 'read-later' | 'topics' | 'thoughts' | 'analytics' | 'admin' | 'news' | 'digest' | 'search' | 'trending' | 'discover'
+export type CollectionView = 'journal' | 'recommendations' | 'read-later' | 'topics' | 'thoughts' | 'analytics' | 'settings' | 'news' | 'digest' | 'search' | 'trending' | 'discover'
 
 interface CollectionsWidgetProps {
   onNavigate: (view: CollectionView) => void
@@ -30,7 +30,6 @@ export default function CollectionsWidget({ onNavigate, activeView }: Collection
     { name: 'Trending', view: 'trending' as CollectionView, icon: '🔥' },
     { name: 'All News', view: 'news' as CollectionView, icon: '📰' },
     { name: 'Analytics', view: 'analytics' as CollectionView, icon: '📊' },
-    { name: 'Feed Admin', view: 'admin' as CollectionView, icon: '⚙️' },
   ]
 
   return (
@@ -54,13 +53,6 @@ export default function CollectionsWidget({ onNavigate, activeView }: Collection
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
-
-        {/* Current selection badge when collapsed */}
-        {!isExpanded && activeView && (
-          <span className="text-xs text-ember-400 bg-ember-500/10 px-2 py-1 rounded">
-            {collections.find(c => c.view === activeView)?.name || activeView}
-          </span>
-        )}
       </div>
 
       {/* Expandable Content */}

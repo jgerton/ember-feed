@@ -1,0 +1,601 @@
+{
+  "name": "Feed Collector",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-1",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.EMBER_API_URL || 'http://app:3000' }}/api/n8n/feeds",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-get-feeds",
+      "name": "Get Active Feeds",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.feeds?.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-feeds",
+      "name": "Has Feeds?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "feeds",
+        "options": {}
+      },
+      "id": "split-feeds",
+      "name": "Split Feeds",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "value": "rss",
+              "output": 0
+            },
+            {
+              "value": "substack",
+              "output": 1
+            },
+            {
+              "value": "medium",
+              "output": 2
+            },
+            {
+              "value": "reddit",
+              "output": 3
+            },
+            {
+              "value": "hackernews",
+              "output": 4
+            }
+          ]
+        },
+        "fallbackOutput": "extra",
+        "options": {}
+      },
+      "id": "switch-type",
+      "name": "Route by Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1130, 200],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "rss-parse",
+      "name": "Parse RSS Feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [1350, 0],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ ($env.RSSHUB_URL || 'http://rsshub:1200') + '/' + $json.rsshubRoute }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "rsshub-substack",
+      "name": "RSSHub Substack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 150],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ ($env.RSSHUB_URL || 'http://rsshub:1200') + '/medium/' + $json.mediumUsername }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "rsshub-medium",
+      "name": "RSSHub Medium",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ ($env.RSSHUB_URL || 'http://rsshub:1200') + '/reddit/subreddit/' + $json.subreddit + '/hot' }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "rsshub-reddit",
+      "name": "RSSHub Reddit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 450],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://hn.algolia.com/api/v1/search_by_date",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "tags",
+              "value": "story"
+            },
+            {
+              "name": "hitsPerPage",
+              "value": "30"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "hn-api",
+      "name": "Hacker News API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 600],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize RSS items to common schema\nconst items = $input.all();\nconst normalized = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const feedId = data.feedId || null;\n  const feedType = data.feedType || 'rss';\n  \n  // Handle different RSS structures\n  const articles = data.items || data.channel?.item || [data];\n  const articleArray = Array.isArray(articles) ? articles : [articles];\n  \n  for (const article of articleArray) {\n    if (!article.title || !article.link) continue;\n    \n    normalized.push({\n      title: article.title || '',\n      url: article.link || article.url || '',\n      description: article.description || article.contentSnippet || article.summary || '',\n      source: feedType,\n      feedId: feedId,\n      publishedAt: article.pubDate || article.isoDate || article.published || new Date().toISOString(),\n      author: article.creator || article.author || article['dc:creator'] || null,\n      imageUrl: article.enclosure?.url || article.image || null,\n      tags: article.categories || [],\n      score: null\n    });\n  }\n}\n\nreturn normalized;"
+      },
+      "id": "normalize-rss",
+      "name": "Normalize RSS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 75]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normalize Hacker News items\nconst items = $input.all();\nconst normalized = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const hits = data.hits || [data];\n  \n  for (const hit of hits) {\n    if (!hit.title || !hit.url) continue;\n    \n    normalized.push({\n      title: hit.title || '',\n      url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,\n      description: hit.story_text || '',\n      source: 'hackernews',\n      feedId: null,\n      publishedAt: hit.created_at || new Date().toISOString(),\n      author: hit.author || null,\n      imageUrl: null,\n      tags: hit._tags || [],\n      score: hit.points || 0\n    });\n  }\n}\n\nreturn normalized;"
+      },
+      "id": "normalize-hn",
+      "name": "Normalize HN",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 600]
+    },
+    {
+      "parameters": {},
+      "id": "merge-all",
+      "name": "Merge All Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1790, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Deduplicate articles by URL\nconst items = $input.all();\nconst seen = new Set();\nconst unique = [];\n\nfor (const item of items) {\n  const url = item.json.url;\n  if (url && !seen.has(url)) {\n    seen.add(url);\n    unique.push(item.json);\n  }\n}\n\nconsole.log(`Deduplicated: ${items.length} -> ${unique.length} articles`);\nreturn unique;"
+      },
+      "id": "deduplicate",
+      "name": "Deduplicate by URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2010, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 50,
+        "options": {}
+      },
+      "id": "batch",
+      "name": "Batch 50 Articles",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [2230, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EMBER_API_URL || 'http://app:3000' }}/api/n8n/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"source\": \"n8n\",\n  \"workflowId\": \"{{ $execution.workflow.id }}\",\n  \"articles\": {{ JSON.stringify($input.all().map(i => i.json)) }}\n}"
+      },
+      "id": "http-ingest",
+      "name": "Push to Ember Feed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2450, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "complete"
+            }
+          ],
+          "number": [
+            {
+              "name": "articlesProcessed",
+              "value": "={{ $input.all().length }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-complete",
+      "name": "Collection Complete",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2670, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "no_feeds"
+            },
+            {
+              "name": "message",
+              "value": "No active feeds to process"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-no-feeds",
+      "name": "No Feeds",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [910, 400]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $env.ERROR_REPORTER_WORKFLOW_ID || 'error-reporter' }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "call-error-reporter",
+      "name": "Report Error",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2010, 500]
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Active Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Feeds": {
+      "main": [
+        [
+          {
+            "node": "Has Feeds?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Feeds?": {
+      "main": [
+        [
+          {
+            "node": "Split Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Feeds": {
+      "main": [
+        [
+          {
+            "node": "Route by Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Type": {
+      "main": [
+        [
+          {
+            "node": "Parse RSS Feed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RSSHub Substack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RSSHub Medium",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RSSHub Reddit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hacker News API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "Normalize RSS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSSHub Substack": {
+      "main": [
+        [
+          {
+            "node": "Normalize RSS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSSHub Medium": {
+      "main": [
+        [
+          {
+            "node": "Normalize RSS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSSHub Reddit": {
+      "main": [
+        [
+          {
+            "node": "Normalize RSS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hacker News API": {
+      "main": [
+        [
+          {
+            "node": "Normalize HN",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize HN": {
+      "main": [
+        [
+          {
+            "node": "Merge All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Results": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate by URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate by URL": {
+      "main": [
+        [
+          {
+            "node": "Batch 50 Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch 50 Articles": {
+      "main": [
+        [
+          {
+            "node": "Push to Ember Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push to Ember Feed": {
+      "main": [
+        [
+          {
+            "node": "Collection Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

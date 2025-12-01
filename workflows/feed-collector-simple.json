@@ -1,0 +1,276 @@
+{
+  "name": "Feed Collector",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-1",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:3002/api/n8n/feeds?status=active",
+        "options": {}
+      },
+      "id": "http-get-feeds",
+      "name": "Get Active Feeds",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if we have feeds\nconst data = $input.first().json;\nconst feeds = data.feeds || [];\n\nif (feeds.length === 0) {\n  return [{ json: { status: 'no_feeds', message: 'No active feeds found' } }];\n}\n\n// Return feeds for processing\nreturn feeds.map(feed => ({ json: feed }));"
+      },
+      "id": "code-check-feeds",
+      "name": "Check Feeds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "rss-parse",
+      "name": "Parse RSS Feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [910, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize RSS items to common schema\nconst items = $input.all();\nconst normalized = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  // Skip if no title or link\n  if (!data.title || !data.link) continue;\n  \n  normalized.push({\n    title: data.title || '',\n    url: data.link || '',\n    description: data.contentSnippet || data.content || data.description || '',\n    source: 'rss',\n    feedId: null,\n    publishedAt: data.isoDate || data.pubDate || new Date().toISOString(),\n    author: data.creator || data.author || null,\n    imageUrl: null,\n    tags: data.categories || [],\n    score: null\n  });\n}\n\nif (normalized.length === 0) {\n  return [{ json: { status: 'no_articles', count: 0 } }];\n}\n\nreturn normalized.map(a => ({ json: a }));"
+      },
+      "id": "normalize",
+      "name": "Normalize Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deduplicate articles by URL\nconst items = $input.all();\nconst seen = new Set();\nconst unique = [];\n\nfor (const item of items) {\n  const url = item.json.url;\n  if (url && !seen.has(url)) {\n    seen.add(url);\n    unique.push(item.json);\n  }\n}\n\nconsole.log(`Deduplicated: ${items.length} -> ${unique.length} articles`);\n\nif (unique.length === 0) {\n  return [{ json: { status: 'no_unique', count: 0 } }];\n}\n\nreturn [{ json: { articles: unique, count: unique.length } }];"
+      },
+      "id": "deduplicate",
+      "name": "Deduplicate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3002/api/n8n/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n', workflowId: 'feed-collector', articles: $json.articles }) }}"
+      },
+      "id": "http-ingest",
+      "name": "Push to Ember Feed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1570, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Return final status\nconst input = $input.first().json;\nreturn [{\n  json: {\n    status: 'complete',\n    result: input\n  }\n}];"
+      },
+      "id": "complete",
+      "name": "Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1790, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Feed Collector Workflow\n\nThis workflow runs every 15 minutes to collect articles from RSS feeds.\n\n**Flow:**\n1. Trigger on schedule\n2. Fetch active feeds from Ember Feed API\n3. Parse each RSS feed\n4. Normalize to common article format\n5. Remove duplicates\n6. Push to Ember Feed database",
+        "width": 350,
+        "height": 180
+      },
+      "id": "note-main",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [180, 80]
+    },
+    {
+      "parameters": {
+        "content": "**Step 1: Schedule**\n\nRuns every 15 minutes automatically when workflow is active.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-schedule",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Step 2: Get Feeds**\n\nCalls Ember Feed API to get list of active RSS feeds to process.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-get-feeds",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [420, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Step 3: Parse RSS**\n\nFetches and parses each feed URL. Continues on failure to process remaining feeds.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-parse",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [860, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Step 4: Normalize**\n\nConverts RSS items to common schema:\n- title, url, description\n- source, publishedAt\n- author, tags",
+        "width": 200,
+        "height": 120
+      },
+      "id": "note-normalize",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1080, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Step 5: Deduplicate**\n\nRemoves duplicate articles by URL before sending to database.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-dedup",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1300, 420]
+    },
+    {
+      "parameters": {
+        "content": "**Step 6: Ingest**\n\nPOSTs articles to /api/n8n/ingest endpoint to save in Ember Feed database.",
+        "width": 200,
+        "height": 100
+      },
+      "id": "note-ingest",
+      "name": "Sticky Note6",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1520, 420]
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Active Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Feeds": {
+      "main": [
+        [
+          {
+            "node": "Check Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Feeds": {
+      "main": [
+        [
+          {
+            "node": "Parse RSS Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "Normalize Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Articles": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "Push to Ember Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push to Ember Feed": {
+      "main": [
+        [
+          {
+            "node": "Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

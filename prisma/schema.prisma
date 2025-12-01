@@ -114,6 +114,7 @@ model Feed {
 
   // Relations
   userSubscriptions   UserFeedSubscription[]
+  n8nErrors           N8nError[]
 
   @@map("feeds")
   @@index([status])
@@ -289,4 +290,32 @@ model KeywordHistory {
   @@index([keyword, date]) // For time-series queries per keyword
   @@index([date]) // For daily aggregations
   @@index([keyword]) // For keyword lookups
+}
+
+// n8n Workflow Error Tracking
+// Stores errors reported by n8n workflows for System Health monitoring
+model N8nError {
+  id           String    @id @default(cuid())
+  workflowId   String    // n8n workflow ID
+  workflowName String    // Human-readable workflow name
+  executionId  String    // n8n execution ID for linking to n8n UI
+  nodeId       String?   // Which node failed (optional)
+  nodeName     String?   // Human-readable node name (optional)
+  errorType    String    // "timeout", "api_error", "parse_error", "rate_limit", etc.
+  errorMessage String    // Full error message
+  feedId       String?   // Related feed if applicable
+  context      String?   // JSON: additional context data
+  resolved     Boolean   @default(false)
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  // Relations
+  feed         Feed?     @relation(fields: [feedId], references: [id], onDelete: SetNull)
+
+  @@map("n8n_errors")
+  @@index([createdAt])
+  @@index([resolved])
+  @@index([workflowName])
+  @@index([feedId])
+  @@index([resolved, createdAt]) // For unresolved errors query
 }
