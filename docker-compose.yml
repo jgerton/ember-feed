@@ -65,6 +65,8 @@ services:
       - AGGREGATOR_URL=http://aggregator:8000
       # n8n Integration
       - N8N_API_KEY=${N8N_API_KEY:-}
+      # Test mode - enables /api/test/* endpoints for database cleanup
+      - TEST_MODE=true
     stdin_open: true  # Keep container running for interactive debugging
     tty: true
     restart: unless-stopped

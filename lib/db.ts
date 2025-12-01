@@ -6,8 +6,16 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+// Test mode uses a separate database for isolation
+const isTestMode = process.env.TEST_MODE === 'true'
+
 // Get database URL from environment
-const databaseUrl = process.env.DATABASE_URL || 'postgresql://ember:ember_dev@postgres:5432/ember_feed'
+// When TEST_MODE=true, use the test database to avoid polluting production data
+const defaultDbUrl = 'postgresql://ember:ember_dev@postgres:5432/ember_feed'
+const testDbUrl = 'postgresql://ember:ember_dev@postgres:5432/ember_feed_test'
+const databaseUrl = isTestMode
+  ? (process.env.TEST_DATABASE_URL || testDbUrl)
+  : (process.env.DATABASE_URL || defaultDbUrl)
 
 // Create PostgreSQL connection pool
 const pool = new Pool({

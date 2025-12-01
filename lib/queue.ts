@@ -10,19 +10,27 @@
 
 import { Queue, QueueEvents } from 'bullmq'
 
+// Test mode detection for Redis isolation
+const isTestMode = process.env.TEST_MODE === 'true'
+
 // Redis connection configuration (shared with cache)
+// Uses DB 1 for tests to isolate from production data (DB 0)
 const connection = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379'),
+  db: isTestMode ? 1 : 0,
   maxRetriesPerRequest: null, // Required for BullMQ
 }
+
+// Queue name helper - prefixes with 'test:' in test mode for additional isolation
+const queueName = (name: string) => (isTestMode ? `test:${name}` : name)
 
 /**
  * Job Queues
  */
 
 // Recommendations queue - pre-compute personalized recommendations
-export const recommendationsQueue = new Queue('recommendations', {
+export const recommendationsQueue = new Queue(queueName('recommendations'), {
   connection,
   defaultJobOptions: {
     attempts: 3, // Retry up to 3 times
@@ -41,7 +49,7 @@ export const recommendationsQueue = new Queue('recommendations', {
 })
 
 // Topic extraction queue - extract topics from new articles
-export const topicExtractionQueue = new Queue('topic-extraction', {
+export const topicExtractionQueue = new Queue(queueName('topic-extraction'), {
   connection,
   defaultJobOptions: {
     attempts: 2,
@@ -60,7 +68,7 @@ export const topicExtractionQueue = new Queue('topic-extraction', {
 })
 
 // Cache warming queue - pre-populate cache during off-peak
-export const cacheWarmingQueue = new Queue('cache-warming', {
+export const cacheWarmingQueue = new Queue(queueName('cache-warming'), {
   connection,
   defaultJobOptions: {
     attempts: 1, // Cache warming is best-effort
@@ -75,9 +83,9 @@ export const cacheWarmingQueue = new Queue('cache-warming', {
  * Queue Events for monitoring
  */
 
-export const recommendationsEvents = new QueueEvents('recommendations', { connection })
-export const topicExtractionEvents = new QueueEvents('topic-extraction', { connection })
-export const cacheWarmingEvents = new QueueEvents('cache-warming', { connection })
+export const recommendationsEvents = new QueueEvents(queueName('recommendations'), { connection })
+export const topicExtractionEvents = new QueueEvents(queueName('topic-extraction'), { connection })
+export const cacheWarmingEvents = new QueueEvents(queueName('cache-warming'), { connection })
 
 // Log queue events
 recommendationsEvents.on('completed', ({ jobId }) => {
