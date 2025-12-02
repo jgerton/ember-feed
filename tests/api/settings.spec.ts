@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test'
 import { apiGet, apiPatch, assertResponseShape } from './test-utils'
 
+// Run tests serially to avoid race conditions (single settings row shared across all tests)
+test.describe.configure({ mode: 'serial' })
+
 test.describe('Settings API', () => {
   // Reset settings to known state before each test to ensure isolation
   test.beforeEach(async ({ request }) => {
