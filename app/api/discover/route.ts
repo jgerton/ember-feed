@@ -17,6 +17,10 @@ export async function GET(request: Request) {
 
   const aggregatorUrl = process.env.AGGREGATOR_URL || 'http://localhost:8000'
 
+  // Add timeout to prevent hanging when aggregator is unavailable
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
   try {
     const response = await fetch(
       `${aggregatorUrl}/api/discover?categories=${encodeURIComponent(categories)}&limit=${limit}`,
@@ -24,6 +28,7 @@ export async function GET(request: Request) {
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
         next: { revalidate: 300 }, // Cache for 5 minutes
       }
     )
@@ -40,10 +45,18 @@ export async function GET(request: Request) {
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return NextResponse.json(
+        { error: 'Service temporarily unavailable' },
+        { status: 503 }
+      )
+    }
     console.error('Discovery fetch error:', error)
     return NextResponse.json(
       { error: 'Failed to connect to aggregator service' },
       { status: 503 }
     )
+  } finally {
+    clearTimeout(timeout)
   }
 }

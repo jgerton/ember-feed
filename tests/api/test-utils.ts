@@ -7,9 +7,22 @@ import { APIRequestContext } from '@playwright/test'
 export const API_BASE_URL = 'http://localhost:3002/api'
 
 /**
+ * Options for API requests
+ */
+export interface ApiRequestOptions {
+  /** Include X-N8N-API-KEY header for n8n endpoints */
+  n8nAuth?: boolean
+}
+
+/**
  * Make a GET request and parse JSON response
  */
-export async function apiGet(request: APIRequestContext, endpoint: string, params?: Record<string, string>) {
+export async function apiGet(
+  request: APIRequestContext,
+  endpoint: string,
+  params?: Record<string, string>,
+  options?: ApiRequestOptions
+) {
   const url = new URL(`${API_BASE_URL}${endpoint}`)
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -17,7 +30,12 @@ export async function apiGet(request: APIRequestContext, endpoint: string, param
     })
   }
 
-  const response = await request.get(url.toString())
+  const headers: Record<string, string> = {}
+  if (options?.n8nAuth) {
+    headers['X-N8N-API-KEY'] = process.env.N8N_API_KEY || 'test-api-key'
+  }
+
+  const response = await request.get(url.toString(), { headers })
 
   // Always try to parse JSON for both success and error responses
   let data = null
@@ -38,12 +56,22 @@ export async function apiGet(request: APIRequestContext, endpoint: string, param
 /**
  * Make a POST request with JSON body
  */
-export async function apiPost(request: APIRequestContext, endpoint: string, body: any) {
+export async function apiPost(
+  request: APIRequestContext,
+  endpoint: string,
+  body: any,
+  options?: ApiRequestOptions
+) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  }
+  if (options?.n8nAuth) {
+    headers['X-N8N-API-KEY'] = process.env.N8N_API_KEY || 'test-api-key'
+  }
+
   const response = await request.post(`${API_BASE_URL}${endpoint}`, {
     data: body,
-    headers: {
-      'Content-Type': 'application/json'
-    }
+    headers
   })
 
   // Always try to parse JSON for both success and error responses
@@ -65,12 +93,22 @@ export async function apiPost(request: APIRequestContext, endpoint: string, body
 /**
  * Make a PATCH request with JSON body
  */
-export async function apiPatch(request: APIRequestContext, endpoint: string, body: any) {
+export async function apiPatch(
+  request: APIRequestContext,
+  endpoint: string,
+  body: any,
+  options?: ApiRequestOptions
+) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  }
+  if (options?.n8nAuth) {
+    headers['X-N8N-API-KEY'] = process.env.N8N_API_KEY || 'test-api-key'
+  }
+
   const response = await request.patch(`${API_BASE_URL}${endpoint}`, {
     data: body,
-    headers: {
-      'Content-Type': 'application/json'
-    }
+    headers
   })
 
   // Always try to parse JSON for both success and error responses

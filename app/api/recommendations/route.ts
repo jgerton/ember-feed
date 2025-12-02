@@ -25,7 +25,16 @@ export async function GET(request: Request) {
       // No recommendations available (likely new user with no activity)
       const emptyResponse = {
         recommendations: [],
-        message: 'Start reading articles to get personalized recommendations'
+        message: 'Start reading articles to get personalized recommendations',
+        pagination: {
+          page: 1,
+          offset: 0,
+          limit,
+          count: 0,
+          total: 0,
+          totalPages: 0,
+          hasMore: false
+        }
       }
       return createCachedResponse(request, emptyResponse, 'dynamic')
     }

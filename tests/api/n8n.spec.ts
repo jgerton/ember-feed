@@ -9,9 +9,12 @@ import { apiPost, apiGet, apiPatch } from './test-utils'
 // Run tests serially to avoid race conditions
 test.describe.configure({ mode: 'serial' })
 
+// n8n auth options for all API calls
+const n8nAuth = { n8nAuth: true }
+
 test.describe('/api/n8n/feeds', () => {
   test('GET returns feeds list for n8n', async ({ request }) => {
-    const { data, ok, status } = await apiGet(request, '/n8n/feeds')
+    const { data, ok, status } = await apiGet(request, '/n8n/feeds', undefined, n8nAuth)
 
     expect(ok).toBe(true)
     expect(status).toBe(200)
@@ -32,7 +35,7 @@ test.describe('/api/n8n/feeds', () => {
   })
 
   test('GET filters by type', async ({ request }) => {
-    const { data, ok } = await apiGet(request, '/n8n/feeds', { type: 'rss' })
+    const { data, ok } = await apiGet(request, '/n8n/feeds', { type: 'rss' }, n8nAuth)
 
     expect(ok).toBe(true)
     expect(data.success).toBe(true)
@@ -43,7 +46,7 @@ test.describe('/api/n8n/feeds', () => {
   })
 
   test('GET filters by status', async ({ request }) => {
-    const { data, ok } = await apiGet(request, '/n8n/feeds', { status: 'active' })
+    const { data, ok } = await apiGet(request, '/n8n/feeds', { status: 'active' }, n8nAuth)
 
     expect(ok).toBe(true)
     expect(data.success).toBe(true)
@@ -54,7 +57,7 @@ test.describe('/api/n8n/feeds', () => {
   })
 
   test('GET filters by minimum priority', async ({ request }) => {
-    const { data, ok } = await apiGet(request, '/n8n/feeds', { priority_min: '50' })
+    const { data, ok } = await apiGet(request, '/n8n/feeds', { priority_min: '50' }, n8nAuth)
 
     expect(ok).toBe(true)
     expect(data.success).toBe(true)
@@ -79,7 +82,7 @@ test.describe('/api/n8n/ingest', () => {
           publishedAt: new Date().toISOString(),
         },
       ],
-    })
+    }, n8nAuth)
 
     expect(ok).toBe(true)
     expect(status).toBe(200)
@@ -95,7 +98,7 @@ test.describe('/api/n8n/ingest', () => {
       source: 'invalid',
       workflowId: 'test',
       articles: [],
-    })
+    }, n8nAuth)
 
     expect(ok).toBe(false)
     expect(status).toBe(400)
@@ -106,7 +109,7 @@ test.describe('/api/n8n/ingest', () => {
     const { data, ok, status } = await apiPost(request, '/n8n/ingest', {
       source: 'n8n',
       articles: [{ title: 'Test', url: 'https://example.com' }],
-    })
+    }, n8nAuth)
 
     expect(ok).toBe(false)
     expect(status).toBe(400)
@@ -118,7 +121,7 @@ test.describe('/api/n8n/ingest', () => {
       source: 'n8n',
       workflowId: 'test',
       articles: [],
-    })
+    }, n8nAuth)
 
     expect(ok).toBe(false)
     expect(status).toBe(400)
@@ -145,7 +148,7 @@ test.describe('/api/n8n/ingest', () => {
           publishedAt: new Date().toISOString(),
         },
       ],
-    })
+    }, n8nAuth)
 
     expect(ok).toBe(true)
     expect(data.stats.received).toBe(2)
@@ -165,7 +168,7 @@ test.describe('/api/n8n/errors', () => {
       errorMessage: 'Test error message',
       nodeId: 'node-1',
       nodeName: 'HTTP Request',
-    })
+    }, n8nAuth)
 
     expect(ok).toBe(true)
     expect(status).toBe(200)
@@ -179,7 +182,7 @@ test.describe('/api/n8n/errors', () => {
     const { data, ok, status } = await apiPost(request, '/n8n/errors', {
       workflowId: 'test',
       // Missing other required fields
-    })
+    }, n8nAuth)
 
     expect(ok).toBe(false)
     expect(status).toBe(400)
@@ -187,7 +190,7 @@ test.describe('/api/n8n/errors', () => {
   })
 
   test('GET returns errors list', async ({ request }) => {
-    const { data, ok, status } = await apiGet(request, '/n8n/errors')
+    const { data, ok, status } = await apiGet(request, '/n8n/errors', undefined, n8nAuth)
 
     expect(ok).toBe(true)
     expect(status).toBe(200)
@@ -200,7 +203,7 @@ test.describe('/api/n8n/errors', () => {
   })
 
   test('GET filters by resolved status', async ({ request }) => {
-    const { data, ok } = await apiGet(request, '/n8n/errors', { resolved: 'false' })
+    const { data, ok } = await apiGet(request, '/n8n/errors', { resolved: 'false' }, n8nAuth)
 
     expect(ok).toBe(true)
     expect(data.success).toBe(true)
@@ -217,7 +220,7 @@ test.describe('/api/n8n/errors', () => {
       return
     }
 
-    const { data, ok, status } = await apiGet(request, `/n8n/errors/${testErrorId}`)
+    const { data, ok, status } = await apiGet(request, `/n8n/errors/${testErrorId}`, undefined, n8nAuth)
 
     expect(ok).toBe(true)
     expect(status).toBe(200)
@@ -235,7 +238,7 @@ test.describe('/api/n8n/errors', () => {
 
     const { data, ok, status } = await apiPatch(request, `/n8n/errors/${testErrorId}`, {
       resolved: true,
-    })
+    }, n8nAuth)
 
     expect(ok).toBe(true)
     expect(status).toBe(200)
@@ -247,7 +250,7 @@ test.describe('/api/n8n/errors', () => {
   test('PATCH returns 404 for non-existent error', async ({ request }) => {
     const { data, ok, status } = await apiPatch(request, '/n8n/errors/non-existent-id', {
       resolved: true,
-    })
+    }, n8nAuth)
 
     expect(ok).toBe(false)
     expect(status).toBe(404)
@@ -257,7 +260,7 @@ test.describe('/api/n8n/errors', () => {
 
 test.describe('/api/n8n/trigger-apify', () => {
   test('POST requires feedIds or scrapeAll', async ({ request }) => {
-    const { data, ok, status } = await apiPost(request, '/n8n/trigger-apify', {})
+    const { data, ok, status } = await apiPost(request, '/n8n/trigger-apify', {}, n8nAuth)
 
     expect(ok).toBe(false)
     expect(status).toBe(400)
@@ -267,7 +270,7 @@ test.describe('/api/n8n/trigger-apify', () => {
   test('POST accepts feedIds array', async ({ request }) => {
     const { data, ok } = await apiPost(request, '/n8n/trigger-apify', {
       feedIds: ['feed-1', 'feed-2'],
-    })
+    }, n8nAuth)
 
     // May fail if n8n is not running, but should not be 400
     if (!ok) {
@@ -280,7 +283,7 @@ test.describe('/api/n8n/trigger-apify', () => {
   test('POST accepts scrapeAll flag', async ({ request }) => {
     const { data, ok } = await apiPost(request, '/n8n/trigger-apify', {
       scrapeAll: true,
-    })
+    }, n8nAuth)
 
     // May fail if n8n is not running, but should not be 400
     if (!ok) {

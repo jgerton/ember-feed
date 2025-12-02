@@ -2,8 +2,25 @@ import { test, expect } from '@playwright/test'
 import { apiGet, apiPost, assertResponseShape } from './test-utils'
 
 test.describe('Scheduler API', () => {
+  // Check if aggregator is available before running tests
+  let aggregatorAvailable = true
+
+  test.beforeAll(async ({ request }) => {
+    try {
+      const { status } = await apiGet(request, '/scheduler')
+      // 503 means route works but aggregator is down
+      aggregatorAvailable = status !== 503
+    } catch {
+      aggregatorAvailable = false
+    }
+    if (!aggregatorAvailable) {
+      console.log('Aggregator service not available - scheduler tests will be skipped')
+    }
+  })
+
   test.describe('GET /api/scheduler', () => {
     test('returns scheduler status', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const { data, ok } = await apiGet(request, '/scheduler')
 
       // May fail if aggregator is not running
@@ -23,6 +40,7 @@ test.describe('Scheduler API', () => {
 
   test.describe('POST /api/scheduler', () => {
     test('rejects missing action', async ({ request }) => {
+      // This validation test can run even if aggregator is down
       const { data, ok, status } = await apiPost(request, '/scheduler', {})
 
       expect(ok).toBe(false)
@@ -34,6 +52,7 @@ test.describe('Scheduler API', () => {
     })
 
     test('rejects invalid action', async ({ request }) => {
+      // This validation test can run even if aggregator is down
       const { data, ok, status } = await apiPost(request, '/scheduler', {
         action: 'invalid'
       })
@@ -47,6 +66,7 @@ test.describe('Scheduler API', () => {
     })
 
     test('start action with default interval', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const { data, ok } = await apiPost(request, '/scheduler', {
         action: 'start'
       })
@@ -59,6 +79,7 @@ test.describe('Scheduler API', () => {
     })
 
     test('start action with custom interval', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const { data, ok } = await apiPost(request, '/scheduler', {
         action: 'start',
         interval_minutes: 15
@@ -72,6 +93,7 @@ test.describe('Scheduler API', () => {
     })
 
     test('stop action', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const { data, ok } = await apiPost(request, '/scheduler', {
         action: 'stop'
       })
@@ -84,6 +106,7 @@ test.describe('Scheduler API', () => {
     })
 
     test('pause action', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       // First start the scheduler
       await apiPost(request, '/scheduler', { action: 'start' })
 
@@ -99,6 +122,7 @@ test.describe('Scheduler API', () => {
     })
 
     test('resume action', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const { data, ok } = await apiPost(request, '/scheduler', {
         action: 'resume'
       })
@@ -110,6 +134,7 @@ test.describe('Scheduler API', () => {
     })
 
     test('trigger action', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const { data, ok } = await apiPost(request, '/scheduler', {
         action: 'trigger'
       })
@@ -122,6 +147,7 @@ test.describe('Scheduler API', () => {
     })
 
     test('update_interval action', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
       const { data, ok } = await apiPost(request, '/scheduler', {
         action: 'update_interval',
         interval_minutes: 45
@@ -137,6 +163,8 @@ test.describe('Scheduler API', () => {
 
   test.describe('Scheduler workflow', () => {
     test('full start-pause-resume-stop cycle', async ({ request }) => {
+      test.skip(!aggregatorAvailable, 'Aggregator service not available')
+
       // Start
       const start = await apiPost(request, '/scheduler', { action: 'start', interval_minutes: 30 })
       if (start.ok) {
