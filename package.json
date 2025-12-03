@@ -39,7 +39,7 @@
     "metascraper-image": "^5.49.5",
     "metascraper-title": "^5.49.5",
     "metascraper-url": "^5.49.5",
-    "next": "^16.0.3",
+    "next": "^16.0.7",
     "node-cron": "^4.2.1",
     "pg": "^8.16.3",
     "pino": "^10.1.0",
