@@ -33,7 +33,7 @@ sqlalchemy[asyncio]==2.0.36
 redis==5.0.0
 
 # Utilities
-python-dotenv==1.0.0
+python-dotenv==1.2.2
 python-dateutil==2.9.0
 
 # Logging
