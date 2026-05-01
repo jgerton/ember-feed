@@ -26,7 +26,8 @@ RUN npm install lightningcss-linux-x64-gnu@1.30.2 @tailwindcss/oxide-linux-x64-g
 COPY . .
 
 # Generate Prisma Client before build
-RUN npx prisma generate
+# DATABASE_URL must be set (any non-empty value) for prisma to parse the schema
+RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" npx prisma generate
 
 # Build application
 RUN npm run build
